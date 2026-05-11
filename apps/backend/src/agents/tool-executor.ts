@@ -20,6 +20,7 @@ import { evaluate } from "../policy/engine.js";
 import { logAudit } from "../policy/audit.js";
 import { createApproval } from "../approvals/service.js";
 import type { ToolCallRequest, ToolCallResult } from "./types.js";
+import { emitApprovalNeeded, emitToolBlocked, emitToolExecuted } from "../websocket/events.js";
 
 /**
  * Execute a single tool call through the full guarded pipeline.
@@ -85,6 +86,12 @@ export async function executeToolCall(
       errorParts.push(`Validation errors: ${decision.validationErrors.join("; ")}`);
     }
 
+    emitToolBlocked({
+      conversationId,
+      toolName: request.toolName,
+      reason: decision.reason,
+    });
+
     return {
       callId: request.callId,
       toolName: request.toolName,
@@ -107,12 +114,21 @@ export async function executeToolCall(
     });
 
     // Create the pending approval record
-    await createApproval({
+    const approval = await createApproval({
       toolCallId: toolCall.id,
       conversationId,
       policyRuleId: decision.matchedRule.id,
       toolName: request.toolName,
       arguments: request.arguments,
+    });
+
+    emitApprovalNeeded({
+      approvalId: approval.id,
+      toolCallId: toolCall.id,
+      toolName: request.toolName,
+      conversationId,
+      arguments: request.arguments,
+      expiresAt: approval.expiresAt.toISOString(),
     });
 
     return {
@@ -175,6 +191,15 @@ export async function executeToolCall(
         success,
         resultLength: textContent.length,
       },
+    });
+
+    emitToolExecuted({
+      conversationId,
+      toolCallId: toolCall.id,
+      toolName: request.toolName,
+      result: textContent,
+      success,
+      latencyMs,
     });
 
     return {

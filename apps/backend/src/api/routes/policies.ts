@@ -13,7 +13,7 @@ import { z } from "zod";
 import { getPrismaClient } from "../../db/client.js";
 import { PolicyCacheStore } from "../../policy/cache.js";
 import { logAudit } from "../../policy/audit.js";
-import { io } from "../../server.js";
+import { getSocketIO } from "../../websocket/events.js";
 
 export const policyRouter = Router();
 
@@ -73,7 +73,7 @@ policyRouter.post("/", async (req: Request, res: Response) => {
 
     // Invalidate cache + notify clients
     await PolicyCacheStore.publishInvalidation();
-    io.emit("policy:updated", { action: "created", ruleId: rule.id });
+    getSocketIO().emit("policy:updated", { action: "created", ruleId: rule.id });
 
     logAudit({
       eventType: "POLICY_CREATED",
@@ -113,7 +113,7 @@ policyRouter.put("/:id", async (req: Request, res: Response) => {
     });
 
     await PolicyCacheStore.publishInvalidation();
-    io.emit("policy:updated", { action: "updated", ruleId: rule.id });
+    getSocketIO().emit("policy:updated", { action: "updated", ruleId: rule.id });
 
     logAudit({
       eventType: "POLICY_UPDATED",
@@ -141,7 +141,7 @@ policyRouter.delete("/:id", async (req: Request, res: Response) => {
     });
 
     await PolicyCacheStore.publishInvalidation();
-    io.emit("policy:updated", { action: "deleted", ruleId: rule.id });
+    getSocketIO().emit("policy:updated", { action: "deleted", ruleId: rule.id });
 
     logAudit({
       eventType: "POLICY_DELETED",
@@ -178,7 +178,7 @@ policyRouter.patch("/:id/toggle", async (req: Request, res: Response) => {
     });
 
     await PolicyCacheStore.publishInvalidation();
-    io.emit("policy:updated", { action: "toggled", ruleId: rule.id, enabled: rule.enabled });
+    getSocketIO().emit("policy:updated", { action: "toggled", ruleId: rule.id, enabled: rule.enabled });
 
     logAudit({
       eventType: "POLICY_TOGGLED",

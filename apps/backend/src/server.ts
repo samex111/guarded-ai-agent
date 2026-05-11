@@ -30,6 +30,7 @@ import { policyRouter } from "./api/routes/policies.js";
 import { approvalRouter } from "./api/routes/approvals.js";
 import { mcpRouter } from "./api/routes/mcp-servers.js";
 import { auditRouter } from "./api/routes/audit.js";
+import { setSocketIO } from "./websocket/events.js";
 
 /* ======================================================
    CONFIG (validated via Zod — fails fast)
@@ -157,6 +158,9 @@ export const io = new SocketIOServer(httpServer, {
     credentials: true,
   },
 });
+
+// Register Socket.io for centralized event emitting
+setSocketIO(io);
 
 io.on("connection", (socket) => {
   console.log(`🔌 Socket connected: ${socket.id}`);

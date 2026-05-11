@@ -50,6 +50,26 @@ function getGroqClient(): Groq {
   return _groq;
 }
 
+// ─── History Trimming ────────────────────────────────────
+
+/**
+ * Trim conversation history to fit within context limits.
+ * Keeps the most recent messages, always preserving the system prompt.
+ *
+ * Groq/Llama models fail with malformed tool calls when history is too long.
+ */
+const MAX_HISTORY_MESSAGES = 30;
+
+function trimHistory(messages: LLMMessage[]): LLMMessage[] {
+  if (messages.length <= MAX_HISTORY_MESSAGES) return messages;
+
+  // Always keep system message + the most recent messages
+  const system = messages[0];
+  const recent = messages.slice(-(MAX_HISTORY_MESSAGES - 1));
+
+  return [system, ...recent];
+}
+
 // ─── Main Agent Loop ─────────────────────────────────────
 
 /**
@@ -85,10 +105,13 @@ export async function runAgentLoop(
 
   // ─── Build messages array for LLM ──────────────────────
 
-  const messages: LLMMessage[] = [
+  let messages: LLMMessage[] = [
     { role: "system", content: config.systemPrompt },
     ...history,
   ];
+
+  // Trim to prevent context overflow → malformed tool calls
+  messages = trimHistory(messages);
 
   // ─── Get available tools ───────────────────────────────
 
@@ -104,22 +127,57 @@ export async function runAgentLoop(
   };
 
   let iterations = 0;
+  let hadBlockedOrPending = false; // Track if any tool was blocked/pending
 
   while (iterations < config.maxIterations) {
     iterations++;
 
     // ── Call LLM ──────────────────────────────────────────
 
-    const completion = await groq.chat.completions.create({
-      model: config.model,
-      messages: messages as Groq.Chat.ChatCompletionMessageParam[],
-      tools: tools.length > 0
-        ? (tools as Groq.Chat.ChatCompletionTool[])
-        : undefined,
-      tool_choice: tools.length > 0 ? "auto" : undefined,
-      temperature: 0.7,
-      max_tokens: 4096,
-    });
+    let completion;
+    try {
+      completion = await groq.chat.completions.create({
+        model: config.model,
+        messages: messages as Groq.Chat.ChatCompletionMessageParam[],
+        tools: tools.length > 0
+          ? (tools as Groq.Chat.ChatCompletionTool[])
+          : undefined,
+        tool_choice: tools.length > 0 ? "auto" : undefined,
+        temperature: 0.7,
+        max_tokens: 4096,
+      });
+    } catch (err) {
+      // Handle Groq-specific errors gracefully
+      if (err instanceof Error && err.message.includes("tool_use_failed")) {
+        console.warn("⚠️ Groq tool_use_failed — falling back to text-only response");
+
+        // Retry WITHOUT tools to get a text response
+        const fallback = await groq.chat.completions.create({
+          model: config.model,
+          messages: messages as Groq.Chat.ChatCompletionMessageParam[],
+          temperature: 0.7,
+          max_tokens: 4096,
+        });
+
+        const fallbackContent = fallback.choices[0]?.message?.content ?? "I encountered an issue processing your request. Could you please rephrase?";
+        await saveAssistantMessage(conversationId, fallbackContent);
+
+        if (fallback.usage) {
+          cumulativeUsage.promptTokens += fallback.usage.prompt_tokens;
+          cumulativeUsage.completionTokens += fallback.usage.completion_tokens;
+          cumulativeUsage.totalTokens += fallback.usage.total_tokens;
+        }
+        await updateTokenUsage(conversationId, cumulativeUsage);
+
+        return {
+          content: fallbackContent,
+          toolCalls: allToolCalls,
+          tokenUsage: cumulativeUsage,
+          conversationId,
+        };
+      }
+      throw err; // Re-throw non-Groq errors
+    }
 
     // ── Track token usage ─────────────────────────────────
 
@@ -203,6 +261,11 @@ export async function runAgentLoop(
       const result = await executeToolCall(request, conversationId);
       allToolCalls.push(result);
 
+      // Track blocked/pending calls
+      if (result.policyAction === "DENY" || result.policyAction === "REQUIRE_APPROVAL") {
+        hadBlockedOrPending = true;
+      }
+
       // Save tool result message
       await saveToolMessage(
         conversationId,
@@ -221,6 +284,43 @@ export async function runAgentLoop(
       console.log(
         `  → ${result.policyAction}: ${result.success ? "✅" : "❌"} ${result.content.slice(0, 100)}`,
       );
+    }
+
+    // ── If a tool was blocked or needs approval, force text response ──
+    // This prevents the LLM from retrying the same tool call in a loop
+    if (hadBlockedOrPending) {
+      try {
+        const forceText = await groq.chat.completions.create({
+          model: config.model,
+          messages: messages as Groq.Chat.ChatCompletionMessageParam[],
+          // No tools → forces a text response
+          temperature: 0.7,
+          max_tokens: 4096,
+        });
+
+        const content = forceText.choices[0]?.message?.content ?? "Some tool calls were blocked or require approval. Please check the approvals page.";
+        await saveAssistantMessage(conversationId, content);
+
+        if (forceText.usage) {
+          cumulativeUsage.promptTokens += forceText.usage.prompt_tokens;
+          cumulativeUsage.completionTokens += forceText.usage.completion_tokens;
+          cumulativeUsage.totalTokens += forceText.usage.total_tokens;
+        }
+        await updateTokenUsage(conversationId, cumulativeUsage);
+
+        return {
+          content,
+          toolCalls: allToolCalls,
+          tokenUsage: cumulativeUsage,
+          conversationId,
+        };
+      } catch {
+        // If even text-only fails, return a hardcoded message
+        const msg = "Some actions were blocked by policy or require admin approval. Please check the Approvals page in the dashboard.";
+        await saveAssistantMessage(conversationId, msg);
+        await updateTokenUsage(conversationId, cumulativeUsage);
+        return { content: msg, toolCalls: allToolCalls, tokenUsage: cumulativeUsage, conversationId };
+      }
     }
   }
 
