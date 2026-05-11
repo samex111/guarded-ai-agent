@@ -24,6 +24,8 @@ import { getConfig } from "./config/index.js";
 import { getPrismaClient, disconnectPrisma } from "./db/client.js";
 import { getRedis, disconnectAllRedis } from "./db/redis.js";
 import { getMcpRuntime } from "./mcp/runtime.js";
+import { initializePolicyEngine } from "./policy/engine.js";
+import { conversationRouter } from "./api/routes/conversations.js";
 
 /* ======================================================
    CONFIG (validated via Zod — fails fast)
@@ -79,6 +81,8 @@ app.get("/", (_req: Request, res: Response) => {
     message: "Guarded AI Agent API 🚀",
   });
 });
+
+app.use("/api/conversations", conversationRouter);
 
 /* ======================================================
    404 HANDLER
@@ -173,11 +177,14 @@ async function bootstrap(): Promise<void> {
   await redis.ping();
   console.log("✅ Redis connected");
 
-  // 3. MCP Runtime — connect to MCP servers + discover tools
+  // 3. Policy Engine — load rules + subscribe to pub/sub
+  await initializePolicyEngine();
+
+  // 4. MCP Runtime — connect to MCP servers + discover tools
   const mcpRuntime = getMcpRuntime();
   await mcpRuntime.initialize();
 
-  // 4. Start HTTP server
+  // 5. Start HTTP server
   httpServer.listen(config.PORT, () => {
     const toolCount = mcpRuntime.getRegistry().size();
     console.log(`
