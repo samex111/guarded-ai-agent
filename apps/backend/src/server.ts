@@ -1,3 +1,11 @@
+/**
+ * Server entry point.
+ *
+ * Wires together: Express → HTTP → Socket.io
+ * Initializes: Config → Prisma → Redis → MCP Runtime
+ * Handles: Graceful shutdown, unhandled errors
+ */
+
 import "dotenv/config";
 
 import http from "node:http";
@@ -11,23 +19,17 @@ import express, {
 } from "express";
 
 import { Server as SocketIOServer } from "socket.io";
-import { z } from "zod";
+
+import { getConfig } from "./config/index.js";
+import { getPrismaClient, disconnectPrisma } from "./db/client.js";
+import { getRedis, disconnectAllRedis } from "./db/redis.js";
+import { getMcpRuntime } from "./mcp/runtime.js";
 
 /* ======================================================
-   ENV VALIDATION
+   CONFIG (validated via Zod — fails fast)
 ====================================================== */
 
-const envSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
-
-  PORT: z.coerce.number().default(8080),
-
-  CLIENT_URL: z.string().url().default("http://localhost:3000"),
-});
-
-const env = envSchema.parse(process.env);
+const config = getConfig();
 
 /* ======================================================
    EXPRESS APP
@@ -41,7 +43,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: env.CLIENT_URL,
+    origin: config.CLIENT_URL,
     credentials: true,
   }),
 );
@@ -62,7 +64,7 @@ app.get("/health", (_req: Request, res: Response) => {
   return res.status(200).json({
     success: true,
     status: "ok",
-    environment: env.NODE_ENV,
+    environment: config.NODE_ENV,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
   });
@@ -74,7 +76,7 @@ app.get("/health", (_req: Request, res: Response) => {
 
 app.get("/", (_req: Request, res: Response) => {
   return res.json({
-    message: "Server running 🚀",
+    message: "Guarded AI Agent API 🚀",
   });
 });
 
@@ -93,7 +95,7 @@ app.use((_req: Request, res: Response) => {
    CENTRALIZED ERROR HANDLER
 ====================================================== */
 
-class AppError extends Error {
+export class AppError extends Error {
   public statusCode: number;
 
   constructor(message: string, statusCode = 500) {
@@ -120,7 +122,7 @@ app.use(
     return res.status(statusCode).json({
       success: false,
       message:
-        env.NODE_ENV === "production"
+        config.NODE_ENV === "production"
           ? "Internal server error"
           : error.message,
     });
@@ -139,33 +141,58 @@ const httpServer = http.createServer(app);
 
 export const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: env.CLIENT_URL,
+    origin: config.CLIENT_URL,
     credentials: true,
   },
 });
 
 io.on("connection", (socket) => {
-  console.log(`Socket connected: ${socket.id}`);
+  console.log(`🔌 Socket connected: ${socket.id}`);
 
   socket.emit("connected", {
     message: "Socket.io connected successfully",
   });
 
   socket.on("disconnect", () => {
-    console.log(`Socket disconnected: ${socket.id}`);
+    console.log(`🔌 Socket disconnected: ${socket.id}`);
   });
 });
 
 /* ======================================================
-   START SERVER
+   BOOTSTRAP — Initialize DB + Redis + MCP, then listen
 ====================================================== */
 
-const server = httpServer.listen(env.PORT, () => {
-  console.log(`
-🚀 Server running
-🌍 Environment : ${env.NODE_ENV}
-📦 Port        : ${env.PORT}
+async function bootstrap(): Promise<void> {
+  // 1. Prisma — connect eagerly to catch DB issues at startup
+  const prisma = getPrismaClient();
+  await prisma.$connect();
+  console.log("✅ PostgreSQL connected (Prisma)");
+
+  // 2. Redis — ping to verify connection
+  const redis = getRedis();
+  await redis.ping();
+  console.log("✅ Redis connected");
+
+  // 3. MCP Runtime — connect to MCP servers + discover tools
+  const mcpRuntime = getMcpRuntime();
+  await mcpRuntime.initialize();
+
+  // 4. Start HTTP server
+  httpServer.listen(config.PORT, () => {
+    const toolCount = mcpRuntime.getRegistry().size();
+    console.log(`
+🚀 Guarded AI Agent — Backend
+🌍 Environment : ${config.NODE_ENV}
+📦 Port        : ${config.PORT}
+🔗 Client URL  : ${config.CLIENT_URL}
+🔧 MCP Tools   : ${toolCount} discovered
 `);
+  });
+}
+
+bootstrap().catch((err: unknown) => {
+  console.error("❌ Failed to start server:", err);
+  process.exit(1);
 });
 
 /* ======================================================
@@ -175,25 +202,29 @@ const server = httpServer.listen(env.PORT, () => {
 const shutdown = async (signal: string) => {
   console.log(`\n${signal} received. Shutting down gracefully...`);
 
-  server.close(() => {
+  httpServer.close(() => {
     console.log("HTTP server closed.");
-
-    io.close(() => {
-      console.log("Socket.io server closed.");
-
-      process.exit(0);
-    });
   });
 
-  setTimeout(() => {
-    console.error("Forced shutdown.");
+  io.close(() => {
+    console.log("Socket.io server closed.");
+  });
 
-    process.exit(1);
-  }, 10000).unref();
+  // Shutdown MCP before DB (MCP persists status to DB)
+  await getMcpRuntime().shutdown();
+  console.log("MCP Runtime shut down.");
+
+  await disconnectPrisma();
+  console.log("Prisma disconnected.");
+
+  await disconnectAllRedis();
+  console.log("Redis disconnected.");
+
+  process.exit(0);
 };
 
-process.on("SIGINT", () => shutdown("SIGINT"));
-process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
 /* ======================================================
    UNHANDLED ERRORS
@@ -210,3 +241,9 @@ process.on("unhandledRejection", (reason) => {
 
   process.exit(1);
 });
+
+/* ======================================================
+   EXPORTS (for route mounting in later phases)
+====================================================== */
+
+export { app, httpServer };

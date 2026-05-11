@@ -1,7 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Guarded AI Agent — Full Database Schema
+// All tables required by PROJECT.md
 
 generator client {
   provider = "prisma-client"
@@ -10,4 +8,266 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────
+
+enum ConversationStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  TOOL
+}
+
+enum ToolCallStatus {
+  PENDING
+  POLICY_BLOCKED
+  AWAITING_APPROVAL
+  APPROVED
+  REJECTED
+  EXECUTING
+  COMPLETED
+  FAILED
+}
+
+enum PolicyAction {
+  DENY
+  REQUIRE_APPROVAL
+  ALLOW
+}
+
+enum PolicyRuleType {
+  BLOCK
+  APPROVAL
+  VALIDATION
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum McpTransport {
+  STDIO
+  SSE
+}
+
+enum McpServerStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum AuditEventType {
+  TOOL_REQUESTED
+  TOOL_ALLOWED
+  TOOL_BLOCKED
+  TOOL_APPROVAL_REQUIRED
+  TOOL_APPROVED
+  TOOL_REJECTED
+  TOOL_EXECUTED
+  TOOL_FAILED
+  POLICY_CREATED
+  POLICY_UPDATED
+  POLICY_DELETED
+  POLICY_TOGGLED
+  MCP_SERVER_CONNECTED
+  MCP_SERVER_DISCONNECTED
+  MCP_SERVER_ERROR
+  CONVERSATION_CREATED
+  APPROVAL_EXPIRED
+}
+
+// ─── Models ──────────────────────────────────────────────
+
+model Conversation {
+  id     String             @id @default(uuid())
+  title  String             @default("New Conversation")
+  status ConversationStatus @default(ACTIVE)
+
+  // Token tracking
+  totalTokens      Int @default(0)
+  promptTokens     Int @default(0)
+  completionTokens Int @default(0)
+
+  messages  Message[]
+  toolCalls ToolCall[]
+  approvals PendingApproval[]
+  auditLogs AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  role    MessageRole
+  content String?
+
+  // For tool-call / tool-result messages
+  toolCallId String?
+  toolName   String?
+
+  tokenCount Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+model ToolCall {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  toolName   String
+  serverName String
+  arguments  Json   @default("{}")
+  result     Json?
+
+  status         ToolCallStatus @default(PENDING)
+  policyDecision String?
+
+  error     String?
+  latencyMs Int?
+
+  approval  PendingApproval?
+  auditLogs AuditLog[]
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([conversationId])
+  @@index([status])
+  @@map("tool_calls")
+}
+
+model PolicyRule {
+  id          String         @id @default(uuid())
+  name        String
+  description String         @default("")
+  ruleType    PolicyRuleType
+  action      PolicyAction
+
+  // Glob patterns for matching
+  toolPattern   String
+  serverPattern String?
+
+  // Validation conditions (JSON schema for input checks)
+  conditions Json @default("{}")
+
+  priority Int     @default(0)
+  enabled  Boolean @default(true)
+
+  approvals PendingApproval[]
+  auditLogs AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([action])
+  @@map("policy_rules")
+}
+
+model PendingApproval {
+  id String @id @default(uuid())
+
+  toolCallId String   @unique
+  toolCall   ToolCall @relation(fields: [toolCallId], references: [id], onDelete: Cascade)
+
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  policyRuleId String
+  policyRule   PolicyRule @relation(fields: [policyRuleId], references: [id])
+
+  toolName  String
+  arguments Json           @default("{}")
+  status    ApprovalStatus @default(PENDING)
+
+  decidedBy String?
+  decidedAt DateTime?
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([status])
+  @@index([conversationId])
+  @@map("pending_approvals")
+}
+
+model AuditLog {
+  id String @id @default(uuid())
+
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  toolCallId String?
+  toolCall   ToolCall? @relation(fields: [toolCallId], references: [id], onDelete: SetNull)
+
+  policyRuleId String?
+  policyRule   PolicyRule? @relation(fields: [policyRuleId], references: [id], onDelete: SetNull)
+
+  eventType AuditEventType
+  toolName  String?
+  details   Json           @default("{}")
+
+  createdAt DateTime @default(now())
+
+  @@index([eventType])
+  @@index([conversationId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model McpServer {
+  id        String         @id @default(uuid())
+  name      String         @unique
+  transport McpTransport
+  command   String?
+  args      Json           @default("[]")
+  url       String?
+  env       Json           @default("{}")
+
+  enabled Boolean        @default(true)
+  status  McpServerStatus @default(DISCONNECTED)
+
+  tools McpTool[]
+
+  lastConnectedAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("mcp_servers")
+}
+
+model McpTool {
+  id       String    @id @default(uuid())
+  serverId String
+  server   McpServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String @default("")
+  inputSchema Json   @default("{}")
+
+  createdAt DateTime @default(now())
+
+  @@unique([serverId, name])
+  @@index([serverId])
+  @@map("mcp_tools")
 }
