@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-card: #1a1a2e;
+  --bg-hover: #232340;
+  --border: #2a2a45;
+  --text-primary: #e4e4ef;
+  --text-secondary: #9494b8;
+  --accent: #7c5cfc;
+  --accent-hover: #6b4ce6;
+  --success: #34d399;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --approval: #60a5fa;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 92, 252, 0.3); }
+  50% { box-shadow: 0 0 12px 4px rgba(124, 92, 252, 0.15); }
+}
+.animate-fade-in { animation: fadeIn 0.3s ease-out; }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }

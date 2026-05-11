@@ -26,6 +26,10 @@ import { getRedis, disconnectAllRedis } from "./db/redis.js";
 import { getMcpRuntime } from "./mcp/runtime.js";
 import { initializePolicyEngine } from "./policy/engine.js";
 import { conversationRouter } from "./api/routes/conversations.js";
+import { policyRouter } from "./api/routes/policies.js";
+import { approvalRouter } from "./api/routes/approvals.js";
+import { mcpRouter } from "./api/routes/mcp-servers.js";
+import { auditRouter } from "./api/routes/audit.js";
 
 /* ======================================================
    CONFIG (validated via Zod — fails fast)
@@ -83,6 +87,10 @@ app.get("/", (_req: Request, res: Response) => {
 });
 
 app.use("/api/conversations", conversationRouter);
+app.use("/api/policies", policyRouter);
+app.use("/api/approvals", approvalRouter);
+app.use("/api/mcp", mcpRouter);
+app.use("/api/audit", auditRouter);
 
 /* ======================================================
    404 HANDLER
