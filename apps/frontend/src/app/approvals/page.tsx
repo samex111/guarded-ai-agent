@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { api, type Approval } from "@/lib/api";
+import { CheckCircle2, XCircle, Clock, Shield } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function ApprovalsPage() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
@@ -24,69 +26,110 @@ export default function ApprovalsPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold">✅ Pending Approvals</h1>
-        <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-          Review and approve or reject tool execution requests.
-        </p>
+    <div className="space-y-6 animate-fade-in-up">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center"
+          style={{
+            background: "linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.08))",
+            border: "1px solid rgba(245,158,11,0.2)",
+          }}
+        >
+          <Shield size={20} style={{ color: "var(--warning)" }} />
+        </div>
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Pending Approvals</h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+            Review and approve or reject tool execution requests.
+          </p>
+        </div>
       </div>
 
       {loading && approvals.length === 0 ? (
-        <div className="rounded-xl p-8 text-center border" style={{ background: "var(--bg-card)", borderColor: "var(--border)", color: "var(--text-secondary)" }}>
+        <div className="glass-card p-8 text-center" style={{ color: "var(--text-muted)" }}>
           Loading approvals...
         </div>
       ) : approvals.length === 0 ? (
-        <div className="rounded-xl p-12 text-center border" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
-          <p className="text-4xl mb-3">🎉</p>
-          <p className="text-lg font-semibold">No Pending Approvals</p>
-          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>All clear! No tool executions are waiting for approval.</p>
+        <div className="glass-card p-16 text-center">
+          <div
+            className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-4"
+            style={{
+              background: "linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05))",
+              border: "1px solid rgba(34,197,94,0.2)",
+            }}
+          >
+            <CheckCircle2 size={28} style={{ color: "var(--success)" }} />
+          </div>
+          <p className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>All Clear</p>
+          <p className="text-xs mt-1.5" style={{ color: "var(--text-muted)" }}>No tool executions waiting for approval.</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {approvals.map((a) => (
-            <div
-              key={a.id}
-              className="rounded-xl border p-5 animate-fade-in transition-all"
-              style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
-            >
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">⏳</span>
-                    <span className="font-semibold font-mono">{a.toolName}</span>
-                    <span className="px-2 py-0.5 rounded text-xs font-medium" style={{ background: "var(--warning)", color: "#000" }}>
-                      PENDING
-                    </span>
+          <AnimatePresence>
+            {approvals.map((a, i) => (
+              <motion.div
+                key={a.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ delay: i * 0.05 }}
+                className="glass-card p-5"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-3">
+                      <Clock size={16} style={{ color: "var(--warning)" }} />
+                      <code className="text-sm font-semibold font-mono" style={{ color: "var(--accent-blue)" }}>
+                        {a.toolName}
+                      </code>
+                      <span className="status-badge" style={{ background: "rgba(245,158,11,0.12)", color: "var(--warning)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                        PENDING
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                        Arguments:{" "}
+                        <code className="px-1.5 py-0.5 rounded-md text-[11px]" style={{ background: "rgba(255,255,255,0.04)", color: "var(--text-secondary)" }}>
+                          {JSON.stringify(a.arguments, null, 0)}
+                        </code>
+                      </p>
+                      <p className="text-xs flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
+                        <Clock size={11} />
+                        Expires in: <span style={{ color: "var(--warning)" }}>{timeLeft(a.expiresAt)}</span>
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-xs space-y-1" style={{ color: "var(--text-secondary)" }}>
-                    <p>Arguments: <code className="px-1 py-0.5 rounded" style={{ background: "var(--bg-hover)" }}>
-                      {JSON.stringify(a.arguments, null, 0)}
-                    </code></p>
-                    <p>Expires in: <span style={{ color: "var(--warning)" }}>{timeLeft(a.expiresAt)}</span></p>
+                  <div className="flex gap-2">
+                    <button
+                      id={`btn-approve-${a.id}`}
+                      onClick={() => approve(a.id)}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-300"
+                      style={{
+                        background: "rgba(34,197,94,0.12)",
+                        color: "var(--success)",
+                        border: "1px solid rgba(34,197,94,0.2)",
+                      }}
+                    >
+                      <CheckCircle2 size={14} /> Approve
+                    </button>
+                    <button
+                      id={`btn-reject-${a.id}`}
+                      onClick={() => reject(a.id)}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-300"
+                      style={{
+                        background: "rgba(239,68,68,0.12)",
+                        color: "var(--danger)",
+                        border: "1px solid rgba(239,68,68,0.2)",
+                      }}
+                    >
+                      <XCircle size={14} /> Reject
+                    </button>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    id={`btn-approve-${a.id}`}
-                    onClick={() => approve(a.id)}
-                    className="px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
-                    style={{ background: "var(--success)", color: "#000" }}
-                  >
-                    ✓ Approve
-                  </button>
-                  <button
-                    id={`btn-reject-${a.id}`}
-                    onClick={() => reject(a.id)}
-                    className="px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
-                    style={{ background: "var(--danger)", color: "#000" }}
-                  >
-                    ✕ Reject
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
     </div>

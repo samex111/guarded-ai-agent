@@ -1,92 +1,65 @@
 "use client";
 import { useState, useEffect } from "react";
 import { api, type AuditLog } from "@/lib/api";
+import { ScrollText, ChevronLeft, ChevronRight } from "lucide-react";
+import { motion } from "framer-motion";
 
-const eventColors: Record<string, string> = {
-  TOOL_ALLOWED: "var(--success)",
-  TOOL_EXECUTED: "var(--success)",
-  TOOL_BLOCKED: "var(--danger)",
-  TOOL_FAILED: "var(--danger)",
-  TOOL_APPROVAL_REQUIRED: "var(--warning)",
-  TOOL_APPROVED: "var(--approval)",
-  TOOL_REJECTED: "var(--danger)",
-  APPROVAL_EXPIRED: "var(--text-secondary)",
-  POLICY_CREATED: "var(--accent)",
-  POLICY_UPDATED: "var(--accent)",
-  POLICY_DELETED: "var(--accent)",
-  POLICY_TOGGLED: "var(--accent)",
+const eventStyles: Record<string, { bg: string; color: string; border: string }> = {
+  TOOL_EXECUTED: { bg: "rgba(34,197,94,0.1)", color: "#22C55E", border: "rgba(34,197,94,0.2)" },
+  TOOL_BLOCKED: { bg: "rgba(239,68,68,0.1)", color: "#EF4444", border: "rgba(239,68,68,0.2)" },
+  TOOL_FAILED: { bg: "rgba(239,68,68,0.1)", color: "#EF4444", border: "rgba(239,68,68,0.2)" },
+  TOOL_APPROVAL_REQUIRED: { bg: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "rgba(245,158,11,0.2)" },
+  TOOL_APPROVED: { bg: "rgba(59,130,246,0.1)", color: "#3B82F6", border: "rgba(59,130,246,0.2)" },
+  TOOL_REJECTED: { bg: "rgba(239,68,68,0.1)", color: "#EF4444", border: "rgba(239,68,68,0.2)" },
+  POLICY_CREATED: { bg: "rgba(124,58,237,0.1)", color: "#7C3AED", border: "rgba(124,58,237,0.2)" },
+  POLICY_UPDATED: { bg: "rgba(124,58,237,0.1)", color: "#7C3AED", border: "rgba(124,58,237,0.2)" },
 };
+
+const fallback = { bg: "rgba(255,255,255,0.05)", color: "#64748B", border: "rgba(255,255,255,0.1)" };
 
 export default function AuditPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
-  const limit = 25;
+  const limit = 20;
 
-  const load = (offset: number) => {
-    api.listAuditLogs({ limit, offset }).then((r) => { setLogs(r.data); setTotal(r.total); }).catch(() => {});
-  };
-  useEffect(() => { load(page * limit); }, [page]);
+  useEffect(() => {
+    api.listAuditLogs({ limit, offset: page * limit }).then((r) => { setLogs(r.data); setTotal(r.total); }).catch(() => {});
+  }, [page]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold">📋 Audit Logs</h1>
-        <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-          Complete audit trail of all policy decisions and tool executions. {total} total events.
-        </p>
+    <div className="space-y-6 animate-fade-in-up">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.2), rgba(124,58,237,0.08))", border: "1px solid rgba(124,58,237,0.2)" }}>
+          <ScrollText size={20} style={{ color: "#7C3AED" }} />
+        </div>
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Audit Logs</h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{total} total events</p>
+        </div>
       </div>
 
-      <div className="rounded-xl border overflow-hidden" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ background: "var(--bg-hover)" }}>
-              <th className="text-left px-4 py-3 font-medium" style={{ color: "var(--text-secondary)" }}>Time</th>
-              <th className="text-left px-4 py-3 font-medium" style={{ color: "var(--text-secondary)" }}>Event</th>
-              <th className="text-left px-4 py-3 font-medium" style={{ color: "var(--text-secondary)" }}>Tool</th>
-              <th className="text-left px-4 py-3 font-medium" style={{ color: "var(--text-secondary)" }}>Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map((log) => (
-              <tr key={log.id} className="border-t transition-colors" style={{ borderColor: "var(--border)" }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
-                <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>
-                  {new Date(log.createdAt).toLocaleString()}
-                </td>
-                <td className="px-4 py-3">
-                  <span className="px-2 py-0.5 rounded text-xs font-semibold" style={{ background: eventColors[log.eventType] ?? "var(--border)", color: "#000" }}>
-                    {log.eventType}
-                  </span>
-                </td>
-                <td className="px-4 py-3 font-mono text-xs">{log.toolName ?? "—"}</td>
-                <td className="px-4 py-3 text-xs max-w-xs truncate" style={{ color: "var(--text-secondary)" }}>
-                  {log.details ? JSON.stringify(log.details).slice(0, 100) : "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {logs.length === 0 && (
-          <div className="p-8 text-center" style={{ color: "var(--text-secondary)" }}>No audit logs yet.</div>
-        )}
+      <div className="space-y-2">
+        {logs.map((log, i) => {
+          const s = eventStyles[log.eventType] || fallback;
+          return (
+            <motion.div key={log.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }} className="glass-card px-4 py-3 flex items-center gap-4">
+              <span className="text-[11px] font-mono whitespace-nowrap shrink-0 w-[130px]" style={{ color: "var(--text-disabled)" }}>{new Date(log.createdAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+              <span className="status-badge shrink-0 min-w-[120px] justify-center" style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>{log.eventType.replace("TOOL_","").replace("POLICY_","P:")}</span>
+              <code className="text-xs font-mono shrink-0 min-w-[80px]" style={{ color: "var(--accent-blue)" }}>{log.toolName || "—"}</code>
+              <span className="text-xs truncate" style={{ color: "var(--text-disabled)" }}>{log.details ? JSON.stringify(log.details).slice(0, 80) : "—"}</span>
+            </motion.div>
+          );
+        })}
       </div>
 
-      {/* Pagination */}
+      {logs.length === 0 && <div className="glass-card p-12 text-center" style={{ color: "var(--text-muted)" }}>No audit logs yet.</div>}
+
       {total > limit && (
-        <div className="flex justify-center gap-2">
-          <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
-            className="px-3 py-1.5 rounded-lg text-sm disabled:opacity-30" style={{ background: "var(--bg-card)", color: "var(--text-secondary)" }}>
-            ← Prev
-          </button>
-          <span className="px-3 py-1.5 text-sm" style={{ color: "var(--text-secondary)" }}>
-            Page {page + 1} of {Math.ceil(total / limit)}
-          </span>
-          <button onClick={() => setPage(page + 1)} disabled={(page + 1) * limit >= total}
-            className="px-3 py-1.5 rounded-lg text-sm disabled:opacity-30" style={{ background: "var(--bg-card)", color: "var(--text-secondary)" }}>
-            Next →
-          </button>
+        <div className="flex justify-center items-center gap-3">
+          <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0} className="p-2 rounded-lg disabled:opacity-20" style={{ background: "rgba(255,255,255,0.04)", color: "var(--text-muted)" }}><ChevronLeft size={16} /></button>
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>{page + 1} / {Math.ceil(total / limit)}</span>
+          <button onClick={() => setPage(page + 1)} disabled={(page + 1) * limit >= total} className="p-2 rounded-lg disabled:opacity-20" style={{ background: "rgba(255,255,255,0.04)", color: "var(--text-muted)" }}><ChevronRight size={16} /></button>
         </div>
       )}
     </div>

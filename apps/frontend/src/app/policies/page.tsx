@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { api, type PolicyRule } from "@/lib/api";
+import { ShieldCheck, Plus, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function PoliciesPage() {
   const [rules, setRules] = useState<PolicyRule[]>([]);
@@ -21,130 +23,149 @@ export default function PoliciesPage() {
   const toggle = async (id: string) => { await api.togglePolicy(id); load(); };
   const remove = async (id: string) => { if (confirm("Delete this rule?")) { await api.deletePolicy(id); load(); } };
 
-  const actionColor = (action: string) =>
-    action === "DENY" ? "var(--danger)" : action === "REQUIRE_APPROVAL" ? "var(--warning)" : "var(--success)";
+  const actionStyle = (action: string) => {
+    if (action === "DENY") return { bg: "rgba(239,68,68,0.12)", color: "#EF4444", border: "rgba(239,68,68,0.2)" };
+    if (action === "REQUIRE_APPROVAL") return { bg: "rgba(245,158,11,0.12)", color: "#F59E0B", border: "rgba(245,158,11,0.2)" };
+    return { bg: "rgba(34,197,94,0.12)", color: "#22C55E", border: "rgba(34,197,94,0.2)" };
+  };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in-up">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">🛡️ Policy Rules</h1>
-          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-            Create and manage guardrail rules. Changes take effect instantly.
-          </p>
+        <div className="flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{
+              background: "linear-gradient(135deg, rgba(59,130,246,0.2), rgba(59,130,246,0.08))",
+              border: "1px solid rgba(59,130,246,0.2)",
+            }}
+          >
+            <ShieldCheck size={20} style={{ color: "var(--accent-blue)" }} />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">Policy Rules</h1>
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+              Guardrail rules enforce security. Changes take effect instantly via Redis.
+            </p>
+          </div>
         </div>
         <button
           id="btn-create-policy"
           onClick={() => setShowCreate(!showCreate)}
-          className="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
-          style={{ background: "var(--accent)", color: "#fff" }}
+          className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all duration-300"
+          style={{
+            background: "linear-gradient(135deg, #2563EB, #3B82F6)",
+            color: "#fff",
+            boxShadow: "0 4px 16px rgba(59,130,246,0.25)",
+          }}
         >
-          + New Rule
+          <Plus size={14} /> New Rule
         </button>
       </div>
 
       {/* Create Form */}
-      {showCreate && (
-        <div className="rounded-xl p-5 border space-y-4 animate-fade-in" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Name</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full rounded-lg px-3 py-2 text-sm border outline-none"
-                style={{ background: "var(--bg-secondary)", borderColor: "var(--border)", color: "var(--text-primary)" }} />
+      <AnimatePresence>
+        {showCreate && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="glass-card p-5 space-y-4"
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[11px] font-medium uppercase tracking-wider mb-1.5 block" style={{ color: "var(--text-muted)" }}>Name</label>
+                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="premium-input w-full" />
+              </div>
+              <div>
+                <label className="text-[11px] font-medium uppercase tracking-wider mb-1.5 block" style={{ color: "var(--text-muted)" }}>Tool Pattern</label>
+                <input value={form.toolPattern} onChange={(e) => setForm({ ...form, toolPattern: e.target.value })} placeholder="e.g. delete_*, write_file" className="premium-input w-full" />
+              </div>
+              <div>
+                <label className="text-[11px] font-medium uppercase tracking-wider mb-1.5 block" style={{ color: "var(--text-muted)" }}>Rule Type</label>
+                <select value={form.ruleType} onChange={(e) => {
+                  const rt = e.target.value;
+                  const action = rt === "BLOCK" ? "DENY" : rt === "APPROVAL" ? "REQUIRE_APPROVAL" : "ALLOW";
+                  setForm({ ...form, ruleType: rt, action });
+                }} className="premium-input w-full">
+                  <option value="BLOCK">Block (DENY)</option>
+                  <option value="APPROVAL">Require Approval</option>
+                  <option value="VALIDATION">Input Validation</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[11px] font-medium uppercase tracking-wider mb-1.5 block" style={{ color: "var(--text-muted)" }}>Priority</label>
+                <input type="number" value={form.priority} onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })} className="premium-input w-full" />
+              </div>
             </div>
             <div>
-              <label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Tool Pattern</label>
-              <input value={form.toolPattern} onChange={(e) => setForm({ ...form, toolPattern: e.target.value })}
-                placeholder="e.g. delete_*, write_file, *"
-                className="w-full rounded-lg px-3 py-2 text-sm border outline-none"
-                style={{ background: "var(--bg-secondary)", borderColor: "var(--border)", color: "var(--text-primary)" }} />
+              <label className="text-[11px] font-medium uppercase tracking-wider mb-1.5 block" style={{ color: "var(--text-muted)" }}>Description</label>
+              <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="premium-input w-full" />
             </div>
-            <div>
-              <label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Rule Type</label>
-              <select value={form.ruleType} onChange={(e) => {
-                const rt = e.target.value;
-                const action = rt === "BLOCK" ? "DENY" : rt === "APPROVAL" ? "REQUIRE_APPROVAL" : "ALLOW";
-                setForm({ ...form, ruleType: rt, action });
-              }}
-                className="w-full rounded-lg px-3 py-2 text-sm border outline-none"
-                style={{ background: "var(--bg-secondary)", borderColor: "var(--border)", color: "var(--text-primary)" }}>
-                <option value="BLOCK">Block (DENY)</option>
-                <option value="APPROVAL">Require Approval</option>
-                <option value="VALIDATION">Input Validation</option>
-              </select>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-xl text-xs" style={{ color: "var(--text-muted)" }}>Cancel</button>
+              <button id="btn-save-policy" onClick={create} className="px-5 py-2 rounded-xl text-xs font-semibold" style={{ background: "linear-gradient(135deg, #2563EB, #3B82F6)", color: "#fff" }}>Save Rule</button>
             </div>
-            <div>
-              <label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Priority</label>
-              <input type="number" value={form.priority} onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })}
-                className="w-full rounded-lg px-3 py-2 text-sm border outline-none"
-                style={{ background: "var(--bg-secondary)", borderColor: "var(--border)", color: "var(--text-primary)" }} />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Description</label>
-            <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full rounded-lg px-3 py-2 text-sm border outline-none"
-              style={{ background: "var(--bg-secondary)", borderColor: "var(--border)", color: "var(--text-primary)" }} />
-          </div>
-          <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-lg text-sm" style={{ color: "var(--text-secondary)" }}>Cancel</button>
-            <button id="btn-save-policy" onClick={create} className="px-4 py-2 rounded-lg text-sm font-semibold"
-              style={{ background: "var(--accent)", color: "#fff" }}>Save Rule</button>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Rules Table */}
-      <div className="rounded-xl border overflow-hidden" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ background: "var(--bg-hover)" }}>
-              <th className="text-left px-4 py-3 font-medium" style={{ color: "var(--text-secondary)" }}>Name</th>
-              <th className="text-left px-4 py-3 font-medium" style={{ color: "var(--text-secondary)" }}>Pattern</th>
-              <th className="text-left px-4 py-3 font-medium" style={{ color: "var(--text-secondary)" }}>Action</th>
-              <th className="text-left px-4 py-3 font-medium" style={{ color: "var(--text-secondary)" }}>Priority</th>
-              <th className="text-left px-4 py-3 font-medium" style={{ color: "var(--text-secondary)" }}>Status</th>
-              <th className="text-right px-4 py-3 font-medium" style={{ color: "var(--text-secondary)" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rules.map((rule) => (
-              <tr key={rule.id} className="border-t transition-colors" style={{ borderColor: "var(--border)" }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
-                <td className="px-4 py-3">
-                  <div className="font-medium">{rule.name}</div>
-                  <div className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{rule.description}</div>
-                </td>
-                <td className="px-4 py-3 font-mono text-xs">{rule.toolPattern}</td>
-                <td className="px-4 py-3">
-                  <span className="px-2 py-0.5 rounded text-xs font-semibold" style={{ background: actionColor(rule.action), color: "#000" }}>
+      {/* Rules Grid */}
+      <div className="grid gap-3">
+        {rules.map((rule, i) => {
+          const as = actionStyle(rule.action);
+          return (
+            <motion.div
+              key={rule.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              className="glass-card p-4 flex items-center gap-4 group"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-sm font-medium">{rule.name}</span>
+                  <span
+                    className="status-badge"
+                    style={{ background: as.bg, color: as.color, border: `1px solid ${as.border}` }}
+                  >
                     {rule.action}
                   </span>
-                </td>
-                <td className="px-4 py-3">{rule.priority}</td>
-                <td className="px-4 py-3">
-                  <button onClick={() => toggle(rule.id)}
-                    className="px-2 py-0.5 rounded text-xs font-medium transition-all"
-                    style={{ background: rule.enabled ? "var(--success)" : "var(--border)", color: rule.enabled ? "#000" : "var(--text-secondary)" }}>
-                    {rule.enabled ? "ON" : "OFF"}
-                  </button>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <button onClick={() => remove(rule.id)} className="text-xs px-2 py-1 rounded transition-all hover:opacity-80"
-                    style={{ color: "var(--danger)" }}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {rules.length === 0 && (
-          <div className="p-8 text-center" style={{ color: "var(--text-secondary)" }}>No policy rules configured.</div>
-        )}
+                  {!rule.enabled && (
+                    <span className="status-badge" style={{ background: "rgba(255,255,255,0.05)", color: "var(--text-disabled)" }}>
+                      DISABLED
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 mt-1.5">
+                  <span className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>
+                    pattern: {rule.toolPattern}
+                  </span>
+                  <span className="text-xs" style={{ color: "var(--text-disabled)" }}>•</span>
+                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                    priority: {rule.priority}
+                  </span>
+                </div>
+                {rule.description && (
+                  <p className="text-xs mt-1" style={{ color: "var(--text-disabled)" }}>{rule.description}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => toggle(rule.id)} className="p-2 rounded-lg transition-all" style={{ color: rule.enabled ? "var(--success)" : "var(--text-disabled)" }}>
+                  {rule.enabled ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                </button>
+                <button onClick={() => remove(rule.id)} className="p-2 rounded-lg transition-all hover:bg-red-500/10" style={{ color: "var(--danger)" }}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
+      {rules.length === 0 && (
+        <div className="glass-card p-12 text-center" style={{ color: "var(--text-muted)" }}>No policy rules configured.</div>
+      )}
     </div>
   );
 }

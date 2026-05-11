@@ -15,10 +15,10 @@ export function register(server: McpServer, security: FileSecurity): void {
     {
       path: z
         .string()
-        .default(".")
-        .describe("Relative path to list (default: workspace root)"),
+        .describe("Relative path to list. Use '.' for the workspace root."),
     },
     async ({ path: dirPath }) => {
+      const effectivePath = dirPath || ".";
       try {
         const safePath = security.resolve(dirPath);
         const entries = await fs.readdir(safePath, { withFileTypes: true });
