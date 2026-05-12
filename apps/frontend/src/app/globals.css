@@ -7,8 +7,8 @@
 
 :root {
   /* Backgrounds */
-  --bg-main: #050816;
-  --bg-secondary: #0B1120;
+  --bg-main: #000000;
+  --bg-secondary: #353e55;
   --bg-card: #111827;
   --bg-elevated: #1A2234;
   --bg-hover: #1e293b;
@@ -204,6 +204,11 @@ body {
 .animate-pulse-glow { animation: pulseGlow 2.5s ease-in-out infinite; }
 .animate-float { animation: float 6s ease-in-out infinite; }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* ─── Sidebar ──────────────────────────────────── */
 
 .sidebar-item {
@@ -214,23 +219,25 @@ body {
   border-radius: 12px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-muted);
-  transition: all 0.25s ease;
+  color: #64748B;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   letter-spacing: 0.01em;
   cursor: pointer;
   position: relative;
   overflow: hidden;
+  border: 1px solid transparent;
+  text-decoration: none;
 }
 
 .sidebar-item:hover {
-  color: var(--text-secondary);
+  color: #CBD5E1;
   background: rgba(255, 255, 255, 0.04);
 }
 
 .sidebar-item.active {
-  color: var(--text-primary);
+  color: #F8FAFC;
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(59, 130, 246, 0.1));
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.2);
 }
 
 .sidebar-item.active::before {

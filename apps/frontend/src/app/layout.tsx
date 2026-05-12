@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen" style={{ background: "#050816", color: "#F8FAFC" }}>
+      <body className="min-h-screen" style={{ background: "#000000ff", color: "#F8FAFC" }}>
         {/* Ambient background effects */}
         <div className="fixed inset-0 pointer-events-none z-0">
           <div
@@ -39,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Sidebar />
 
         {/* Main content area — offset for sidebar */}
-        <main className="ml-[240px] p-6 relative z-10 min-h-screen">
+        <main className="ml-[240px] p-6 bg-black arelative z-10 min-h-screen">
           {children}
         </main>
       </body>
