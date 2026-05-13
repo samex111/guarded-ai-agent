@@ -26,6 +26,9 @@ const envSchema = z.object({
   MCP_WORKSPACE_PATH: z.string().default("./workspace"),
 
   APPROVAL_TIMEOUT_MS: z.coerce.number().default(300_000), // 5 min
+
+  /** Optional second HTTP port exposing only POST /api/public/scrape (Lead Intelligence). */
+  INTELLIGENCE_PORT: z.coerce.number().int().positive().optional(),
 });
 
 // ─── Types ───────────────────────────────────────────────

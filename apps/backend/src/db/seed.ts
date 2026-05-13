@@ -46,6 +46,39 @@ async function seed(): Promise<void> {
   console.log(`   Command: npx tsx ${mcpServerPath}`);
   console.log(`   Workspace: ${workspacePath}`);
 
+  const leadMcpPath = path.resolve(
+    import.meta.dirname,
+    "../../../lead-mcp/src/server.ts",
+  );
+
+  await prisma.mcpServer.upsert({
+    where: { name: "lead-intelligence" },
+    update: {
+      command: "npx",
+      args: ["tsx", leadMcpPath],
+      env: {
+        LEAD_API_URL: "http://localhost:8080",
+        LEAD_INTELLIGENCE_URL: "http://localhost:8080",
+      },
+      enabled: true,
+    },
+    create: {
+      name: "lead-intelligence",
+      transport: "STDIO",
+      command: "npx",
+      args: ["tsx", leadMcpPath],
+      env: {
+        LEAD_API_URL: "http://localhost:8080",
+        LEAD_INTELLIGENCE_URL: "http://localhost:8080",
+      },
+      enabled: true,
+      status: "DISCONNECTED",
+    },
+  });
+
+  console.log("✅ Seeded lead-intelligence MCP server config");
+  console.log(`   Command: npx tsx ${leadMcpPath}`);
+
   // ─── Seed Sample Policy Rules ────────────────────────────
 
   // Rule 1: Block delete_file entirely
@@ -104,6 +137,71 @@ async function seed(): Promise<void> {
   console.log("   2. Approve write_file (REQUIRE_APPROVAL)");
   console.log("   3. Validate read_* paths (VALIDATION)");
 
+  await prisma.policyRule.upsert({
+    where: { id: "rule-lead-delete" },
+    update: {},
+    create: {
+      id: "rule-lead-delete",
+      name: "Approve lead delete",
+      description: "Soft-delete requires human approval",
+      ruleType: "APPROVAL",
+      action: "REQUIRE_APPROVAL",
+      toolPattern: "delete_lead",
+      serverPattern: "lead-intelligence",
+      priority: 80,
+      enabled: true,
+    },
+  });
+
+  await prisma.policyRule.upsert({
+    where: { id: "rule-lead-delete-all" },
+    update: {},
+    create: {
+      id: "rule-lead-delete-all",
+      name: "Approve delete all leads",
+      description: "Critical bulk soft-delete",
+      ruleType: "APPROVAL",
+      action: "REQUIRE_APPROVAL",
+      toolPattern: "delete_all_leads",
+      serverPattern: "lead-intelligence",
+      priority: 100,
+      enabled: true,
+    },
+  });
+
+  await prisma.policyRule.upsert({
+    where: { id: "rule-lead-download" },
+    update: {},
+    create: {
+      id: "rule-lead-download",
+      name: "Approve lead export",
+      description: "Export may contain sensitive scraped data",
+      ruleType: "APPROVAL",
+      action: "REQUIRE_APPROVAL",
+      toolPattern: "download_lead",
+      serverPattern: "lead-intelligence",
+      priority: 60,
+      enabled: true,
+    },
+  });
+
+  await prisma.policyRule.upsert({
+    where: { id: "rule-lead-update" },
+    update: {},
+    create: {
+      id: "rule-lead-update",
+      name: "Approve lead metadata update",
+      description: "Optional governance for lead edits",
+      ruleType: "APPROVAL",
+      action: "REQUIRE_APPROVAL",
+      toolPattern: "update_lead",
+      serverPattern: "lead-intelligence",
+      priority: 40,
+      enabled: true,
+    },
+  });
+
+  console.log("✅ Seeded 4 lead MCP policy rules (lead-intelligence server)");
   await disconnectPrisma();
 }
 

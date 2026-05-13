@@ -91,3 +91,28 @@ export function emitPolicyUpdated(data: {
 }): void {
   _io?.emit("policy:updated", data);
 }
+
+/** Lead lifecycle — dashboard + agent observability. */
+export function emitLeadCreated(data: {
+  leadId: string;
+  website: string;
+  status: string;
+  expiresAt: string | null;
+}): void {
+  _io?.emit("lead:created", data);
+}
+
+export function emitLeadUpdated(data: { leadId: string }): void {
+  _io?.emit("lead:updated", data);
+}
+
+export function emitLeadSaved(data: {
+  leadId: string;
+  status: string;
+}): void {
+  _io?.emit("lead:saved", data);
+}
+
+export function emitLeadDeleted(data: { leadId: string }): void {
+  _io?.emit("lead:deleted", data);
+}

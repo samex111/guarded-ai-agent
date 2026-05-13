@@ -85,6 +85,17 @@ enum AuditEventType {
   APPROVAL_EXPIRED
 }
 
+enum LeadStatus {
+  TEMPORARY
+  SAVED
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 // ─── Models ──────────────────────────────────────────────
 
 model Conversation {
@@ -270,4 +281,28 @@ model McpTool {
   @@unique([serverId, name])
   @@index([serverId])
   @@map("mcp_tools")
+}
+
+model Lead {
+  id          String       @id @default(uuid())
+  website     String
+  name        String       @default("")
+  leadScore   Int          @default(0)
+  confidence  Int          @default(0)
+  priority    LeadPriority @default(MEDIUM)
+  status      LeadStatus   @default(TEMPORARY)
+  data        Json         @default("{}")
+  notes       String       @default("")
+  tags        String[]     @default([])
+  pinned      Boolean      @default(false)
+  expiresAt   DateTime?
+  deletedAt   DateTime?
+  exportCount Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([status, expiresAt])
+  @@index([deletedAt])
+  @@index([createdAt])
+  @@map("leads")
 }

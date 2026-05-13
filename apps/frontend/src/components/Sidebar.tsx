@@ -11,10 +11,12 @@ import {
   Settings,
   Zap,
   Loader2,
+  Users,
 } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Chat", icon: MessageSquare, id: "nav-chat" },
+  { href: "/leads", label: "Leads", icon: Users, id: "nav-leads" },
   { href: "/policies", label: "Policies", icon: ShieldCheck, id: "nav-policies" },
   { href: "/approvals", label: "Approvals", icon: CheckCircle2, id: "nav-approvals" },
   { href: "/audit", label: "Audit Logs", icon: ScrollText, id: "nav-audit" },

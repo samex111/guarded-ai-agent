@@ -30,7 +30,12 @@ import { policyRouter } from "./api/routes/policies.js";
 import { approvalRouter } from "./api/routes/approvals.js";
 import { mcpRouter } from "./api/routes/mcp-servers.js";
 import { auditRouter } from "./api/routes/audit.js";
+import { leadRouter, intelligenceLeadRouter } from "./api/routes/leads.js";
 import { setSocketIO } from "./websocket/events.js";
+import {
+  startLeadCleanupScheduler,
+  stopLeadCleanupScheduler,
+} from "./queues/lead-cleanup.js";
 
 /* ======================================================
    CONFIG (validated via Zod — fails fast)
@@ -92,6 +97,7 @@ app.use("/api/policies", policyRouter);
 app.use("/api/approvals", approvalRouter);
 app.use("/api/mcp", mcpRouter);
 app.use("/api/audit", auditRouter);
+app.use("/api", leadRouter);
 
 /* ======================================================
    404 HANDLER
@@ -148,6 +154,29 @@ app.use(
 
 const httpServer = http.createServer(app);
 
+/** Optional scrape-only HTTP surface (e.g. port 4001). */
+let intelligenceHttpServer: http.Server | undefined;
+
+function createIntelligenceApp(): express.Express {
+  const intelligenceApp = express();
+  intelligenceApp.use(
+    cors({
+      origin: config.CLIENT_URL,
+      credentials: true,
+    }),
+  );
+  intelligenceApp.use(express.json({ limit: "10mb" }));
+  intelligenceApp.get("/health", (_req: Request, res: Response) => {
+    res.status(200).json({
+      success: true,
+      role: "lead-intelligence",
+      timestamp: new Date().toISOString(),
+    });
+  });
+  intelligenceApp.use("/api", intelligenceLeadRouter);
+  return intelligenceApp;
+}
+
 /* ======================================================
    SOCKET.IO
 ====================================================== */
@@ -196,17 +225,35 @@ async function bootstrap(): Promise<void> {
   const mcpRuntime = getMcpRuntime();
   await mcpRuntime.initialize();
 
-  // 5. Start HTTP server
-  httpServer.listen(config.PORT, () => {
-    const toolCount = mcpRuntime.getRegistry().size();
-    console.log(`
+  // 5. Lead cleanup — BullMQ repeat job
+  await startLeadCleanupScheduler();
+
+  // 6. Start HTTP server(s)
+  await new Promise<void>((resolve, reject) => {
+    httpServer.listen(config.PORT, () => resolve());
+    httpServer.on("error", reject);
+  });
+
+  if (config.INTELLIGENCE_PORT !== undefined) {
+    const intelligenceApp = createIntelligenceApp();
+    intelligenceHttpServer = http.createServer(intelligenceApp);
+    await new Promise<void>((resolve, reject) => {
+      intelligenceHttpServer!.listen(config.INTELLIGENCE_PORT, () => resolve());
+      intelligenceHttpServer!.on("error", reject);
+    });
+    console.log(
+      `📡 Lead Intelligence API :${config.INTELLIGENCE_PORT} → POST /api/public/scrape`,
+    );
+  }
+
+  const toolCount = mcpRuntime.getRegistry().size();
+  console.log(`
 🚀 Guarded AI Agent — Backend
 🌍 Environment : ${config.NODE_ENV}
 📦 Port        : ${config.PORT}
 🔗 Client URL  : ${config.CLIENT_URL}
 🔧 MCP Tools   : ${toolCount} discovered
 `);
-  });
 }
 
 bootstrap().catch((err: unknown) => {
@@ -228,6 +275,16 @@ const shutdown = async (signal: string) => {
   io.close(() => {
     console.log("Socket.io server closed.");
   });
+
+  await stopLeadCleanupScheduler();
+  console.log("Lead cleanup scheduler stopped.");
+
+  if (intelligenceHttpServer) {
+    await new Promise<void>((resolve) => {
+      intelligenceHttpServer!.close(() => resolve());
+    });
+    console.log("Lead Intelligence HTTP server closed.");
+  }
 
   // Shutdown MCP before DB (MCP persists status to DB)
   await getMcpRuntime().shutdown();

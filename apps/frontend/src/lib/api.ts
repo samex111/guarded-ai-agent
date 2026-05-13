@@ -94,6 +94,28 @@ export interface AuditLog {
   conversationId: string | null;
 }
 
+export interface LeadSummary {
+  id: string;
+  website: string;
+  name: string;
+  leadScore: number;
+  confidence: number;
+  priority: string;
+  status: string;
+  expiresAt: string | null;
+  pinned: boolean;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeadListResponse {
+  items: LeadSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 // ─── API Functions ───────────────────────────────────────
 
 export const api = {
@@ -174,6 +196,18 @@ export const api = {
     if (params?.eventType) qs.set("eventType", params.eventType);
     return request<{ success: boolean; data: AuditLog[]; total: number }>(
       `/api/audit?${qs.toString()}`,
+    );
+  },
+
+  // Leads
+  listLeads: (params?: { page?: number; pageSize?: number; status?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set("page", String(params.page));
+    if (params?.pageSize) qs.set("pageSize", String(params.pageSize));
+    if (params?.status) qs.set("status", params.status);
+    const s = qs.toString();
+    return request<{ success: boolean; data: LeadListResponse }>(
+      `/api/leads${s ? `?${s}` : ""}`,
     );
   },
 };
