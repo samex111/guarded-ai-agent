@@ -99,7 +99,7 @@ export default function McpPage() {
             <h2 className="text-sm font-semibold mb-3">All Discovered Tools ({tools.length})</h2>
             <div className="flex flex-wrap gap-2">
               {tools.map((t) => (
-                <span key={t.name} className="px-2.5 py-1 rounded-lg text-[11px] font-mono transition-all hover:bg-blue-500/5 hover:border-blue-500/20" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", color: "#3B82F6" }} title={t.description}>
+                <span key={t.name} className="px-2.5 py-1 rounded-lg text-[11px] font-mono transition-all hover:bg-blue-500/5 hover:border-blue-500/20" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", color: "#f5f7fa" }} title={t.description}>
                   {t.name} <span style={{ color: "#475569" }}>({t.serverName})</span>
                 </span>
               ))}
