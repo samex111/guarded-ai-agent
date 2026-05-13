@@ -48,6 +48,8 @@ export function registerLeadTools(server: McpServer): void {
           };
         }
 
+     
+
         const compactLead = {
           website: lead.website,
           name: lead.name,
@@ -65,6 +67,7 @@ export function registerLeadTools(server: McpServer): void {
               type: "text" as const,
               text: JSON.stringify(
                 compactLead,
+                
                 null,
                 2
               ),
