@@ -50,7 +50,7 @@ export default function ChatPage() {
     api
       .listConversations()
       .then((r) => setConversations(r.data))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoadingConvs(false));
   }, []);
 
@@ -145,19 +145,19 @@ export default function ChatPage() {
       setMessages((prev) => {
         const withCollapsed = prev.map((m) =>
           m.role === "ASSISTANT" &&
-          m.id !== assistantId &&
-          (m.executions?.length ?? 0) > 0
+            m.id !== assistantId &&
+            (m.executions?.length ?? 0) > 0
             ? { ...m, executionTimelineCollapsed: true }
             : m,
         );
         return withCollapsed.map((m) =>
           m.id === assistantId
             ? {
-                ...m,
-                content: r.data.content,
-                toolCalls: r.data.toolCalls,
-                streaming: false,
-              }
+              ...m,
+              content: r.data.content,
+              toolCalls: r.data.toolCalls,
+              streaming: false,
+            }
             : m,
         );
       });
@@ -168,20 +168,20 @@ export default function ChatPage() {
         prev.map((m) =>
           aid && m.id === aid
             ? {
-                ...m,
-                content: errText,
-                streaming: false,
-                executions: [
-                  ...(m.executions ?? []),
-                  {
-                    id: `err-${Date.now()}`,
-                    kind: "error" as const,
-                    title: "Couldn’t complete the request",
-                    subtitle: err instanceof Error ? err.message.slice(0, 120) : undefined,
-                    status: "error" as const,
-                  },
-                ],
-              }
+              ...m,
+              content: errText,
+              streaming: false,
+              executions: [
+                ...(m.executions ?? []),
+                {
+                  id: `err-${Date.now()}`,
+                  kind: "error" as const,
+                  title: "Couldn’t complete the request",
+                  subtitle: err instanceof Error ? err.message.slice(0, 120) : undefined,
+                  status: "error" as const,
+                },
+              ],
+            }
             : m,
         ),
       );
@@ -208,15 +208,15 @@ export default function ChatPage() {
 
   return (
     <div className="flex gap-5 h-[calc(100vh-3rem)] min-h-0">
-        <div
-  className="w-56 shrink-0 rounded-2xl flex flex-col gap-0.5 overflow-y-auto"
-  style={{
-    background: "rgba(31, 32, 32, 0.6)",
-    backdropFilter: "blur(16px)",
-    border: "1px solid rgba(255,255,255,0.06)",
-    padding: 10,
-  }}
->
+      <div
+        className="w-56 shrink-0 rounded-2xl flex flex-col gap-0.5 overflow-y-auto"
+        style={{
+          background: "rgba(31, 32, 32, 0.6)",
+          backdropFilter: "blur(16px)",
+          border: "1px solid rgba(255,255,255,0.06)",
+          padding: 10,
+        }}
+      >
         <button
           id="btn-new-chat"
           onClick={newChat}
@@ -332,9 +332,8 @@ export default function ChatPage() {
 
                   {m.content ? (
                     <pre
-                      className={`whitespace-pre-wrap font-[inherit] leading-relaxed ${
-                        (m.executions?.length ?? 0) > 0 ? "mt-3 pt-3 border-t border-white/[0.06]" : ""
-                      }`}
+                      className={`whitespace-pre-wrap font-[inherit] leading-relaxed ${(m.executions?.length ?? 0) > 0 ? "mt-3 pt-3 border-t border-white/[0.06]" : ""
+                        }`}
                     >
                       {m.content}
                     </pre>

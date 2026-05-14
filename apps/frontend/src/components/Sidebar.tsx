@@ -91,12 +91,7 @@ export default function Sidebar() {
                 opacity: isLoading ? 0.7 : 1,
               }}
             >
-              {isLoading ? (
-                <Loader2
-                  size={17}
-                  style={{ color: "#3B82F6", animation: "spin 0.8s linear infinite" }}
-                />
-              ) : (
+             
                 <Icon
                   size={17}
                   style={{
@@ -105,7 +100,7 @@ export default function Sidebar() {
                     transition: "all 0.25s ease",
                   }}
                 />
-              )}
+              
               <span>{item.label}</span>
               {isActive && (
                 <div
