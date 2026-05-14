@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getSocket } from "@/lib/socket";
+import { fromScrapePhase } from "@/lib/execution-humanize";
 
 export interface ActivityItem {
   id: string;
@@ -103,9 +104,9 @@ export function ActivityStream({
       push(`📋 Approval ${d.status.toLowerCase()}: ${d.toolName}${tail}`, d.conversationId);
     };
     const onScrape = (d: { message: string; website?: string }) => {
-      const w = d.website ? ` (${d.website})` : "";
+      const title = fromScrapePhase(d).title;
       if (conversationId) return;
-      push(`🌐 ${d.message}${w}`);
+      push(`🌐 ${title}`);
     };
 
     if (mode === "full") {
