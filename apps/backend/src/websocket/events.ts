@@ -1,11 +1,8 @@
 /**
  * WebSocket Events — centralized Socket.io event emitter.
  *
- * All real-time events flow through here:
- *   - Tool execution results (allowed, blocked, approved)
- *   - Approval status changes
- *   - Policy updates
- *   - Chat messages
+ * All real-time events flow through here. Route handlers and services must not
+ * call `io.emit` directly — use these helpers so event names stay consistent.
  */
 
 import type { Server as SocketIOServer } from "socket.io";
@@ -23,30 +20,72 @@ export function getSocketIO(): SocketIOServer {
   return _io;
 }
 
-// ─── Event Emitters ──────────────────────────────────────
-
-/** Emit when a tool call is executed (after policy allows or approval). */
-export function emitToolExecuted(data: {
-  conversationId: string;
-  toolCallId: string;
-  toolName: string;
-  result: string;
-  success: boolean;
-  latencyMs?: number;
-}): void {
-  _io?.emit("tool:executed", data);
+function emit(event: string, data: unknown): void {
+  _io?.emit(event, data);
 }
 
-/** Emit when a tool call is blocked by policy. */
+// ─── Agent / policy ──────────────────────────────────────
+
+export function emitAgentThinking(data: {
+  conversationId: string;
+  iteration: number;
+}): void {
+  emit("agent:thinking", data);
+}
+
+export function emitPolicyChecking(data: {
+  conversationId: string;
+  toolName: string;
+  toolCallId?: string;
+}): void {
+  emit("policy:checking", data);
+}
+
+// ─── Tool execution (MCP runtime + guarded executor) ─────
+
+export function emitToolStarted(data: {
+  toolName: string;
+  serverName: string;
+  conversationId?: string;
+  toolCallId?: string;
+  timestamp: string;
+}): void {
+  emit("tool:started", data);
+}
+
+export function emitToolCompleted(data: {
+  toolName: string;
+  serverName: string;
+  success: boolean;
+  latencyMs: number;
+  conversationId?: string;
+  toolCallId?: string;
+  resultSummary?: string;
+}): void {
+  emit("tool:completed", data);
+}
+
+export function emitToolFailed(data: {
+  toolName: string;
+  serverName: string;
+  latencyMs: number;
+  error: string;
+  conversationId?: string;
+  toolCallId?: string;
+}): void {
+  emit("tool:failed", data);
+}
+
 export function emitToolBlocked(data: {
   conversationId: string;
   toolName: string;
   reason: string;
 }): void {
-  _io?.emit("tool:blocked", data);
+  emit("tool:blocked", data);
 }
 
-/** Emit when a new approval is needed. */
+// ─── Approvals ───────────────────────────────────────────
+
 export function emitApprovalNeeded(data: {
   approvalId: string;
   toolCallId: string;
@@ -55,10 +94,27 @@ export function emitApprovalNeeded(data: {
   arguments: unknown;
   expiresAt: string;
 }): void {
-  _io?.emit("approval:needed", data);
+  emit("approval:pending", data);
 }
 
-/** Emit when an approval is resolved (approved/rejected/expired). */
+export function emitApprovalApproved(data: {
+  approvalId: string;
+  toolCallId: string;
+  toolName: string;
+  conversationId: string;
+}): void {
+  emit("approval:approved", data);
+}
+
+export function emitApprovalRejected(data: {
+  approvalId: string;
+  toolCallId: string;
+  toolName: string;
+  conversationId: string;
+}): void {
+  emit("approval:rejected", data);
+}
+
 export function emitApprovalResolved(data: {
   approvalId: string;
   toolCallId: string;
@@ -67,10 +123,11 @@ export function emitApprovalResolved(data: {
   status: "APPROVED" | "REJECTED" | "EXPIRED";
   result?: string;
 }): void {
-  _io?.emit("approval:resolved", data);
+  emit("approval:resolved", data);
 }
 
-/** Emit when a new chat message is available. */
+// ─── Chat / conversation sync ────────────────────────────
+
 export function emitChatMessage(data: {
   conversationId: string;
   role: string;
@@ -81,38 +138,60 @@ export function emitChatMessage(data: {
     policyAction: string;
   }>;
 }): void {
-  _io?.emit("chat:message", data);
+  emit("chat:message", data);
 }
 
-/** Emit when policies are updated. */
+/** Tell clients to refetch conversation (e.g. after approval + tool execution). */
+export function emitConversationSync(data: { conversationId: string }): void {
+  emit("conversation:sync", data);
+}
+
+// ─── Policies ────────────────────────────────────────────
+
 export function emitPolicyUpdated(data: {
   action: string;
   ruleId: string;
+  enabled?: boolean;
 }): void {
-  _io?.emit("policy:updated", data);
+  emit("policy:updated", data);
 }
 
-/** Lead lifecycle — dashboard + agent observability. */
+// ─── Lead scrape progress ───────────────────────────────
+
+export function emitScrapePhase(data: {
+  phase: string;
+  message: string;
+  website?: string;
+  conversationId?: string;
+}): void {
+  emit("scrape:phase", { ...data, timestamp: new Date().toISOString() });
+}
+
+// ─── Lead lifecycle ──────────────────────────────────────
+
 export function emitLeadCreated(data: {
   leadId: string;
   website: string;
   status: string;
   expiresAt: string | null;
+  leadScore?: number;
+  priority?: string;
+  name?: string;
 }): void {
-  _io?.emit("lead:created", data);
+  emit("lead:created", data);
 }
 
 export function emitLeadUpdated(data: { leadId: string }): void {
-  _io?.emit("lead:updated", data);
+  emit("lead:updated", data);
 }
 
 export function emitLeadSaved(data: {
   leadId: string;
   status: string;
 }): void {
-  _io?.emit("lead:saved", data);
+  emit("lead:saved", data);
 }
 
 export function emitLeadDeleted(data: { leadId: string }): void {
-  _io?.emit("lead:deleted", data);
+  emit("lead:deleted", data);
 }

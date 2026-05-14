@@ -37,6 +37,7 @@ import {
   DEFAULT_AGENT_CONFIG,
   type AgentConfig,
 } from "./types.js";
+import { emitAgentThinking } from "../websocket/events.js";
 
 // ─── Groq Client Singleton ──────────────────────────────
 
@@ -63,8 +64,9 @@ const MAX_HISTORY_MESSAGES = 30;
 function trimHistory(messages: LLMMessage[]): LLMMessage[] {
   if (messages.length <= MAX_HISTORY_MESSAGES) return messages;
 
-  // Always keep system message + the most recent messages
   const system = messages[0];
+  if (system === undefined) return messages;
+
   const recent = messages.slice(-(MAX_HISTORY_MESSAGES - 1));
 
   return [system, ...recent];
@@ -132,6 +134,8 @@ export async function runAgentLoop(
   while (iterations < config.maxIterations) {
     iterations++;
 
+    emitAgentThinking({ conversationId, iteration: iterations });
+
     // ── Call LLM ──────────────────────────────────────────
 
     let completion;
@@ -139,10 +143,12 @@ export async function runAgentLoop(
       completion = await groq.chat.completions.create({
         model: config.model,
         messages: messages as Groq.Chat.ChatCompletionMessageParam[],
-        tools: tools.length > 0
-          ? (tools as Groq.Chat.ChatCompletionTool[])
-          : undefined,
-        tool_choice: tools.length > 0 ? "auto" : undefined,
+        ...(tools.length > 0
+          ? {
+              tools: tools as Groq.Chat.ChatCompletionTool[],
+              tool_choice: "auto" as const,
+            }
+          : {}),
         temperature: 0.7,
         max_tokens: 4096,
       });

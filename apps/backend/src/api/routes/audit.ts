@@ -14,13 +14,43 @@ export const auditRouter = Router();
 
 auditRouter.get("/", async (req: Request, res: Response) => {
   try {
-    const { conversationId, eventType, limit, offset } = req.query;
+    const q = req.query;
+    const convRaw = q["conversationId"];
+    const conv =
+      typeof convRaw === "string"
+        ? convRaw
+        : Array.isArray(convRaw) && typeof convRaw[0] === "string"
+          ? convRaw[0]
+          : undefined;
+    const etRaw = q["eventType"];
+    const etStr =
+      typeof etRaw === "string"
+        ? etRaw
+        : Array.isArray(etRaw) && typeof etRaw[0] === "string"
+          ? etRaw[0]
+          : undefined;
+    const limRaw = q["limit"];
+    const limStr =
+      typeof limRaw === "string"
+        ? limRaw
+        : Array.isArray(limRaw) && typeof limRaw[0] === "string"
+          ? limRaw[0]
+          : undefined;
+    const offRaw = q["offset"];
+    const offStr =
+      typeof offRaw === "string"
+        ? offRaw
+        : Array.isArray(offRaw) && typeof offRaw[0] === "string"
+          ? offRaw[0]
+          : undefined;
 
     const result = await queryAuditLogs({
-      conversationId: conversationId as string | undefined,
-      eventType: eventType as AuditEventType | undefined,
-      limit: limit ? parseInt(limit as string, 10) : undefined,
-      offset: offset ? parseInt(offset as string, 10) : undefined,
+      ...(conv !== undefined && conv.length > 0 ? { conversationId: conv } : {}),
+      ...(etStr !== undefined && etStr.length > 0
+        ? { eventType: etStr as AuditEventType }
+        : {}),
+      ...(limStr !== undefined ? { limit: parseInt(limStr, 10) } : {}),
+      ...(offStr !== undefined ? { offset: parseInt(offStr, 10) } : {}),
     });
 
     return res.json({

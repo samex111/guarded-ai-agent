@@ -29,6 +29,9 @@ const envSchema = z.object({
 
   /** Optional second HTTP port exposing only POST /api/public/scrape (Lead Intelligence). */
   INTELLIGENCE_PORT: z.coerce.number().int().positive().optional(),
+
+  /** Optional — enables Context7 MCP row in DB when set (see seed). */
+  CONTEXT7_API_KEY: z.string().optional(),
 });
 
 // ─── Types ───────────────────────────────────────────────

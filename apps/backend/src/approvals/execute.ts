@@ -5,13 +5,12 @@
  *   Admin approves → this module runs the tool → result sent to client
  *
  * Bypasses the policy engine (already approved by admin).
- * Writes result to DB and emits WebSocket event.
+ * Writes result to DB; realtime events are emitted from MCP runtime and the approvals route.
  */
 
 import { getPrismaClient } from "../db/client.js";
 import { getMcpRuntime } from "../mcp/runtime.js";
 import { logAudit } from "../policy/audit.js";
-import { emitApprovalResolved, emitToolExecuted } from "../websocket/events.js";
 
 /**
  * Execute a tool call that was pending approval and is now approved.
@@ -53,7 +52,10 @@ export async function executeApprovedToolCall(
         ? (toolCall.arguments as Record<string, unknown>)
         : {};
 
-    const mcpResult = await mcpRuntime.executeTool(toolCall.toolName, args);
+    const mcpResult = await mcpRuntime.executeTool(toolCall.toolName, args, {
+      conversationId: toolCall.conversationId,
+      toolCallId: toolCall.id,
+    });
     const latencyMs = Date.now() - startTime;
 
     // Extract text content
@@ -82,25 +84,6 @@ export async function executeApprovedToolCall(
       toolCallId: toolCall.id,
       toolName: toolCall.toolName,
       details: { latencyMs, success, approvedExecution: true },
-    });
-
-    // 6. Emit WebSocket events
-    emitToolExecuted({
-      conversationId: toolCall.conversationId,
-      toolCallId: toolCall.id,
-      toolName: toolCall.toolName,
-      result: textContent,
-      success,
-      latencyMs,
-    });
-
-    emitApprovalResolved({
-      approvalId: "",
-      toolCallId: toolCall.id,
-      toolName: toolCall.toolName,
-      conversationId: toolCall.conversationId,
-      status: "APPROVED",
-      result: textContent,
     });
 
     console.log(

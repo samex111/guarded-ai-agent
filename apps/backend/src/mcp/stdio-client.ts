@@ -85,11 +85,20 @@ export class McpStdioClient {
 
     const result = await this.client.listTools();
 
-    return result.tools.map((tool) => ({
-      name: tool.name,
-      description: tool.description,
-      inputSchema: tool.inputSchema as Record<string, unknown> | undefined,
-    }));
+    return result.tools.map((tool) => {
+      const out: {
+        name: string;
+        description?: string;
+        inputSchema?: Record<string, unknown>;
+      } = { name: tool.name };
+      if (tool.description !== undefined && tool.description !== "") {
+        out.description = tool.description;
+      }
+      if (tool.inputSchema !== undefined) {
+        out.inputSchema = tool.inputSchema as Record<string, unknown>;
+      }
+      return out;
+    });
   }
 
   /** Execute a tool by name with given arguments. */
@@ -108,10 +117,13 @@ export class McpStdioClient {
       arguments: args,
     });
 
-    return {
+    const out: ToolCallResult = {
       content: (result.content as ToolCallResult["content"]) ?? [],
-      isError: result.isError as boolean | undefined,
     };
+    if (result.isError === true) {
+      out.isError = true;
+    }
+    return out;
   }
 
   /** Disconnect from the MCP server. */

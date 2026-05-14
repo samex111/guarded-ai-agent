@@ -10,6 +10,7 @@ import {
   emitLeadDeleted,
   emitLeadSaved,
   emitLeadUpdated,
+  emitScrapePhase,
 } from "../websocket/events.js";
 import { deriveScores, extractTitle } from "./scrape-helpers.js";
 
@@ -29,6 +30,12 @@ export async function scrapeAndCreateLead(url: string): Promise<{
   if (!/^https?:\/\//i.test(website)) {
     website = `https://${website}`;
   }
+
+  emitScrapePhase({
+    phase: "fetch",
+    message: "Fetching website…",
+    website,
+  });
 
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), 20_000);
@@ -52,12 +59,31 @@ export async function scrapeAndCreateLead(url: string): Promise<{
     clearTimeout(t);
   }
 
+  emitScrapePhase({
+    phase: "metadata",
+    message: "Extracting metadata…",
+    website,
+  });
+
   const name = extractTitle(html) || new URL(website).hostname;
+
+  emitScrapePhase({
+    phase: "technologies",
+    message: "Detecting technologies…",
+    website,
+  });
+
   const { leadScore, confidence, priority } = deriveScores(
     website,
     name.length,
     html.length,
   );
+
+  emitScrapePhase({
+    phase: "score",
+    message: "Calculating lead score…",
+    website,
+  });
 
   const now = new Date();
   const expiresAt = new Date(now.getTime() + TEMP_TTL_MS);
@@ -70,6 +96,12 @@ export async function scrapeAndCreateLead(url: string): Promise<{
       snippet: html.slice(0, 2000),
     },
   };
+
+  emitScrapePhase({
+    phase: "save",
+    message: "Saving lead…",
+    website,
+  });
 
   const lead = await prisma.lead.create({
     data: {
@@ -89,6 +121,15 @@ export async function scrapeAndCreateLead(url: string): Promise<{
     website: lead.website,
     status: lead.status,
     expiresAt: lead.expiresAt?.toISOString() ?? null,
+    leadScore: lead.leadScore,
+    priority: lead.priority,
+    name: lead.name,
+  });
+
+  emitScrapePhase({
+    phase: "complete",
+    message: "Lead created",
+    website: lead.website,
   });
 
   return {

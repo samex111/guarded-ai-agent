@@ -14,6 +14,16 @@ import { getPrismaClient } from "../../db/client.js";
 
 export const conversationRouter = Router();
 
+function routeParamId(
+  raw: string | string[] | undefined,
+): string | undefined {
+  if (typeof raw === "string" && raw.length > 0) return raw;
+  if (Array.isArray(raw) && typeof raw[0] === "string" && raw[0].length > 0) {
+    return raw[0];
+  }
+  return undefined;
+}
+
 // ─── Schemas ─────────────────────────────────────────────
 
 const chatSchema = z.object({
@@ -56,7 +66,13 @@ conversationRouter.post(
   "/:id/chat",
   async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = routeParamId(req.params["id"]);
+      if (id === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing conversation id",
+        });
+      }
       const body = chatSchema.parse(req.body);
 
       console.log(`💬 Chat [${id}]: "${body.message.slice(0, 80)}"`);
@@ -93,10 +109,17 @@ conversationRouter.get(
   "/:id",
   async (req: Request, res: Response) => {
     try {
+      const id = routeParamId(req.params["id"]);
+      if (id === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing conversation id",
+        });
+      }
       const prisma = getPrismaClient();
 
       const conversation = await prisma.conversation.findUnique({
-        where: { id: req.params.id },
+        where: { id },
         include: {
           messages: { orderBy: { createdAt: "asc" } },
           toolCalls: { orderBy: { createdAt: "asc" } },

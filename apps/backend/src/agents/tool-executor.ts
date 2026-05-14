@@ -20,7 +20,7 @@ import { evaluate } from "../policy/engine.js";
 import { logAudit } from "../policy/audit.js";
 import { createApproval } from "../approvals/service.js";
 import type { ToolCallRequest, ToolCallResult } from "./types.js";
-import { emitApprovalNeeded, emitToolBlocked, emitToolExecuted } from "../websocket/events.js";
+import { emitApprovalNeeded, emitPolicyChecking, emitToolBlocked } from "../websocket/events.js";
 
 /**
  * Execute a single tool call through the full guarded pipeline.
@@ -60,6 +60,12 @@ export async function executeToolCall(
   });
 
   // ─── 3. Policy evaluation ────────────────────────────────
+
+  emitPolicyChecking({
+    conversationId,
+    toolName: request.toolName,
+    toolCallId: toolCall.id,
+  });
 
   const decision = await evaluate({
     toolName: request.toolName,
@@ -158,6 +164,10 @@ export async function executeToolCall(
     const mcpResult = await mcpRuntime.executeTool(
       request.toolName,
       request.arguments,
+      {
+        conversationId,
+        toolCallId: toolCall.id,
+      },
     );
 
     const latencyMs = Date.now() - startTime;
@@ -191,15 +201,6 @@ export async function executeToolCall(
         success,
         resultLength: textContent.length,
       },
-    });
-
-    emitToolExecuted({
-      conversationId,
-      toolCallId: toolCall.id,
-      toolName: request.toolName,
-      result: textContent,
-      success,
-      latencyMs,
     });
 
     return {

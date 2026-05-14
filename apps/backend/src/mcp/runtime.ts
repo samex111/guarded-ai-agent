@@ -15,6 +15,17 @@ import { ToolRegistry } from "./registry.js";
 import { discoverTools, type DiscoveryResult } from "./discovery.js";
 import { getPrismaClient } from "../db/client.js";
 import type { McpTransport } from "../generated/prisma/client.js";
+import {
+  emitToolCompleted,
+  emitToolFailed,
+  emitToolStarted,
+} from "../websocket/events.js";
+
+/** Optional correlation for realtime MCP telemetry. */
+export interface McpExecuteContext {
+  conversationId?: string;
+  toolCallId?: string;
+}
 
 export interface McpServerRecord {
   id: string;
@@ -135,6 +146,7 @@ export class McpRuntime {
   async executeTool(
     toolName: string,
     args: Record<string, unknown>,
+    context?: McpExecuteContext,
   ): Promise<ToolCallResult> {
     const tool = this.registry.getTool(toolName);
 
@@ -151,6 +163,15 @@ export class McpRuntime {
     }
 
     const startTime = Date.now();
+    emitToolStarted({
+      toolName,
+      serverName: tool.serverName,
+      timestamp: new Date().toISOString(),
+      ...(context?.conversationId !== undefined
+        ? { conversationId: context.conversationId }
+        : {}),
+      ...(context?.toolCallId !== undefined ? { toolCallId: context.toolCallId } : {}),
+    });
 
     try {
       const result = await client.callTool(toolName, args);
@@ -160,13 +181,47 @@ export class McpRuntime {
         `🔧 Tool "${toolName}" executed in ${latencyMs}ms (server: "${tool.serverName}")`,
       );
 
+      const textContent = result.content
+        .filter((c) => c.type === "text" && c.text)
+        .map((c) => c.text!)
+        .join("\n");
+      const success = !result.isError;
+
+      emitToolCompleted({
+        toolName,
+        serverName: tool.serverName,
+        success,
+        latencyMs,
+        resultSummary:
+          textContent.length > 400 ? `${textContent.slice(0, 400)}…` : textContent,
+        ...(context?.conversationId !== undefined
+          ? { conversationId: context.conversationId }
+          : {}),
+        ...(context?.toolCallId !== undefined ? { toolCallId: context.toolCallId } : {}),
+      });
+
       return result;
     } catch (err) {
       const latencyMs = Date.now() - startTime;
+      const errorMessage =
+        err instanceof Error ? err.message : String(err);
+
       console.error(
         `❌ Tool "${toolName}" failed after ${latencyMs}ms:`,
-        err instanceof Error ? err.message : err,
+        errorMessage,
       );
+
+      emitToolFailed({
+        toolName,
+        serverName: tool.serverName,
+        latencyMs,
+        error: errorMessage,
+        ...(context?.conversationId !== undefined
+          ? { conversationId: context.conversationId }
+          : {}),
+        ...(context?.toolCallId !== undefined ? { toolCallId: context.toolCallId } : {}),
+      });
+
       throw err;
     }
   }

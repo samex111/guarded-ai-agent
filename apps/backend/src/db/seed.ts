@@ -6,10 +6,12 @@
 
 import "dotenv/config";
 import path from "node:path";
+import { getConfig } from "../config/index.js";
 import { getPrismaClient, disconnectPrisma } from "./client.js";
 
 async function seed(): Promise<void> {
   const prisma = getPrismaClient();
+  const env = getConfig();
 
   // Resolve the filesystem-mcp server path
   const mcpServerPath = path.resolve(
@@ -78,6 +80,34 @@ async function seed(): Promise<void> {
 
   console.log("✅ Seeded lead-intelligence MCP server config");
   console.log(`   Command: npx tsx ${leadMcpPath}`);
+
+  const context7Key = env.CONTEXT7_API_KEY ?? "";
+  await prisma.mcpServer.upsert({
+    where: { name: "context7" },
+    update: {
+      command: "npx",
+      args: ["-y", "@upstash/context7-mcp"],
+      env:
+        context7Key.length > 0 ? { CONTEXT7_API_KEY: context7Key } : {},
+      enabled: context7Key.length > 0,
+    },
+    create: {
+      name: "context7",
+      transport: "STDIO",
+      command: "npx",
+      args: ["-y", "@upstash/context7-mcp"],
+      env:
+        context7Key.length > 0 ? { CONTEXT7_API_KEY: context7Key } : {},
+      enabled: context7Key.length > 0,
+      status: "DISCONNECTED",
+    },
+  });
+
+  if (context7Key.length > 0) {
+    console.log("✅ Seeded Context7 MCP (enabled — CONTEXT7_API_KEY set)");
+  } else {
+    console.log("ℹ️  Context7 MCP row upserted but disabled — set CONTEXT7_API_KEY and re-run seed to enable");
+  }
 
   // ─── Seed Sample Policy Rules ────────────────────────────
 

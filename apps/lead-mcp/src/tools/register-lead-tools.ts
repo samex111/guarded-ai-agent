@@ -13,64 +13,46 @@ export function registerLeadTools(server: McpServer): void {
     { url: z.string().describe("Website URL to analyze") },
     async ({ url }) => {
       try {
-        const base = 'http://localhost:4001';
-        const json = await readJson<{ success: boolean; data?: unknown; message?: unknown }>(
-          `${base}/api/public/scrape`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              urls: [url],
-            }),
-          },
-        );
+        const base = getLeadIntelligenceBase();
+        const json = await readJson<{
+          success: boolean;
+          data?: {
+            leadId: string;
+            name: string;
+            leadScore: number;
+            priority: string;
+            confidence: number;
+            expiresIn: string;
+          };
+          message?: unknown;
+        }>(`${base}/api/public/scrape`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        });
         if (!json.success || json.data === undefined) {
           return {
             content: [{ type: "text" as const, text: `Error: ${String(json.message ?? "scrape failed")}` }],
             isError: true,
           };
         }
-        const result =
-          (json.data as any[])?.[0];
-
-        const lead =
-          result?.data;
-
-        if (!lead) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: "Error: Invalid scraper response",
-              },
-            ],
-            isError: true,
-          };
-        }
-
-     
+        const row = json.data;
 
         const compactLead = {
-          website: lead.website,
-          name: lead.name,
-          description: lead.description,
-          leadScore: lead.leadScore,
-          confidence: lead.confidence,
-          priority: lead.priority,
-          technologies: lead.technologies,
-          businessType: lead.businessType,
+          leadId: row.leadId,
+          website: url,
+          name: row.name,
+          leadScore: row.leadScore,
+          confidence: row.confidence,
+          priority: row.priority,
+          expiresIn: row.expiresIn,
         };
 
         return {
           content: [
             {
               type: "text" as const,
-              text: JSON.stringify(
-                compactLead,
-                
-                null,
-                2
-              ),
+              text: JSON.stringify(compactLead, null, 2),
             },
           ],
         };

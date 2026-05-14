@@ -159,9 +159,11 @@ function emitAudit(
   logAudit({
     eventType,
     conversationId: request.conversationId,
-    toolCallId: request.toolCallId,
-    policyRuleId: decision.matchedRule?.id,
     toolName: request.toolName,
+    ...(request.toolCallId !== undefined ? { toolCallId: request.toolCallId } : {}),
+    ...(decision.matchedRule !== null
+      ? { policyRuleId: decision.matchedRule.id }
+      : {}),
     details: {
       serverName: request.serverName,
       action: decision.action,

@@ -13,9 +13,24 @@ import {
   rejectRequest,
 } from "../../approvals/service.js";
 import { executeApprovedToolCall } from "../../approvals/execute.js";
-import { getSocketIO } from "../../websocket/events.js";
+import {
+  emitApprovalApproved,
+  emitApprovalRejected,
+  emitApprovalResolved,
+  emitConversationSync,
+} from "../../websocket/events.js";
 
 export const approvalRouter = Router();
+
+function readApprovalId(req: Request, res: Response): string | undefined {
+  const raw = req.params["id"];
+  const id = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof id !== "string" || id.length === 0) {
+    res.status(400).json({ success: false, message: "Missing approval id" });
+    return undefined;
+  }
+  return id;
+}
 
 // ─── GET / — List pending ────────────────────────────────
 
@@ -35,23 +50,37 @@ approvalRouter.get("/", async (_req: Request, res: Response) => {
 
 approvalRouter.post("/:id/approve", async (req: Request, res: Response) => {
   try {
-    const decidedBy = (req.body as Record<string, unknown>)?.decidedBy as string ?? "admin";
-    const approval = await approveRequest(req.params.id, decidedBy);
+    const approvalId = readApprovalId(req, res);
+    if (approvalId === undefined) return;
 
-    const io = getSocketIO();
-    io.emit("approval:approved", {
+    const decidedBy =
+      ((req.body as Record<string, unknown>)?.decidedBy as string) ?? "admin";
+    const approval = await approveRequest(approvalId, decidedBy);
+
+    emitApprovalApproved({
       approvalId: approval.id,
       toolCallId: approval.toolCallId,
       toolName: approval.toolName,
+      conversationId: approval.conversationId,
     });
 
-    // 🔑 Actually execute the tool now that it's approved
     let executionResult = "";
     try {
       executionResult = await executeApprovedToolCall(approval.toolCallId);
     } catch (execErr) {
       executionResult = `Execution failed: ${execErr instanceof Error ? execErr.message : "Unknown error"}`;
     }
+
+    emitApprovalResolved({
+      approvalId: approval.id,
+      toolCallId: approval.toolCallId,
+      toolName: approval.toolName,
+      conversationId: approval.conversationId,
+      status: "APPROVED",
+      result: executionResult,
+    });
+
+    emitConversationSync({ conversationId: approval.conversationId });
 
     return res.json({
       success: true,
@@ -72,15 +101,29 @@ approvalRouter.post("/:id/approve", async (req: Request, res: Response) => {
 
 approvalRouter.post("/:id/reject", async (req: Request, res: Response) => {
   try {
-    const decidedBy = (req.body as Record<string, unknown>)?.decidedBy as string ?? "admin";
-    const approval = await rejectRequest(req.params.id, decidedBy);
+    const approvalId = readApprovalId(req, res);
+    if (approvalId === undefined) return;
 
-    const io = getSocketIO();
-    io.emit("approval:rejected", {
+    const decidedBy =
+      ((req.body as Record<string, unknown>)?.decidedBy as string) ?? "admin";
+    const approval = await rejectRequest(approvalId, decidedBy);
+
+    emitApprovalRejected({
       approvalId: approval.id,
       toolCallId: approval.toolCallId,
       toolName: approval.toolName,
+      conversationId: approval.conversationId,
     });
+
+    emitApprovalResolved({
+      approvalId: approval.id,
+      toolCallId: approval.toolCallId,
+      toolName: approval.toolName,
+      conversationId: approval.conversationId,
+      status: "REJECTED",
+    });
+
+    emitConversationSync({ conversationId: approval.conversationId });
 
     return res.json({ success: true, data: approval });
   } catch (err) {

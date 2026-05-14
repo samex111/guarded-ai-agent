@@ -13,9 +13,19 @@ import { z } from "zod";
 import { getPrismaClient } from "../../db/client.js";
 import { PolicyCacheStore } from "../../policy/cache.js";
 import { logAudit } from "../../policy/audit.js";
-import { getSocketIO } from "../../websocket/events.js";
+import { emitPolicyUpdated } from "../../websocket/events.js";
 
 export const policyRouter = Router();
+
+function routeParamId(
+  raw: string | string[] | undefined,
+): string | undefined {
+  if (typeof raw === "string" && raw.length > 0) return raw;
+  if (Array.isArray(raw) && typeof raw[0] === "string" && raw[0].length > 0) {
+    return raw[0];
+  }
+  return undefined;
+}
 
 // ─── Schemas ─────────────────────────────────────────────
 
@@ -26,7 +36,7 @@ const createPolicySchema = z.object({
   action: z.enum(["DENY", "REQUIRE_APPROVAL", "ALLOW"]),
   toolPattern: z.string().min(1),
   serverPattern: z.string().optional(),
-  conditions: z.record(z.unknown()).optional(),
+  conditions: z.record(z.string(), z.unknown()).optional(),
   priority: z.number().int().optional(),
   enabled: z.boolean().optional(),
 });
@@ -73,7 +83,7 @@ policyRouter.post("/", async (req: Request, res: Response) => {
 
     // Invalidate cache + notify clients
     await PolicyCacheStore.publishInvalidation();
-    getSocketIO().emit("policy:updated", { action: "created", ruleId: rule.id });
+    emitPolicyUpdated({ action: "created", ruleId: rule.id });
 
     logAudit({
       eventType: "POLICY_CREATED",
@@ -94,11 +104,15 @@ policyRouter.post("/", async (req: Request, res: Response) => {
 
 policyRouter.put("/:id", async (req: Request, res: Response) => {
   try {
+    const ruleId = routeParamId(req.params["id"]);
+    if (ruleId === undefined) {
+      return res.status(400).json({ success: false, message: "Missing rule id" });
+    }
     const body = updatePolicySchema.parse(req.body);
     const prisma = getPrismaClient();
 
     const rule = await prisma.policyRule.update({
-      where: { id: req.params.id },
+      where: { id: ruleId },
       data: {
         ...(body.name !== undefined ? { name: body.name } : {}),
         ...(body.description !== undefined ? { description: body.description } : {}),
@@ -113,7 +127,7 @@ policyRouter.put("/:id", async (req: Request, res: Response) => {
     });
 
     await PolicyCacheStore.publishInvalidation();
-    getSocketIO().emit("policy:updated", { action: "updated", ruleId: rule.id });
+    emitPolicyUpdated({ action: "updated", ruleId: rule.id });
 
     logAudit({
       eventType: "POLICY_UPDATED",
@@ -134,14 +148,18 @@ policyRouter.put("/:id", async (req: Request, res: Response) => {
 
 policyRouter.delete("/:id", async (req: Request, res: Response) => {
   try {
+    const ruleId = routeParamId(req.params["id"]);
+    if (ruleId === undefined) {
+      return res.status(400).json({ success: false, message: "Missing rule id" });
+    }
     const prisma = getPrismaClient();
 
     const rule = await prisma.policyRule.delete({
-      where: { id: req.params.id },
+      where: { id: ruleId },
     });
 
     await PolicyCacheStore.publishInvalidation();
-    getSocketIO().emit("policy:updated", { action: "deleted", ruleId: rule.id });
+    emitPolicyUpdated({ action: "deleted", ruleId: rule.id });
 
     logAudit({
       eventType: "POLICY_DELETED",
@@ -162,10 +180,14 @@ policyRouter.delete("/:id", async (req: Request, res: Response) => {
 
 policyRouter.patch("/:id/toggle", async (req: Request, res: Response) => {
   try {
+    const ruleId = routeParamId(req.params["id"]);
+    if (ruleId === undefined) {
+      return res.status(400).json({ success: false, message: "Missing rule id" });
+    }
     const prisma = getPrismaClient();
 
     const existing = await prisma.policyRule.findUnique({
-      where: { id: req.params.id },
+      where: { id: ruleId },
     });
 
     if (!existing) {
@@ -173,12 +195,16 @@ policyRouter.patch("/:id/toggle", async (req: Request, res: Response) => {
     }
 
     const rule = await prisma.policyRule.update({
-      where: { id: req.params.id },
+      where: { id: ruleId },
       data: { enabled: !existing.enabled },
     });
 
     await PolicyCacheStore.publishInvalidation();
-    getSocketIO().emit("policy:updated", { action: "toggled", ruleId: rule.id, enabled: rule.enabled });
+    emitPolicyUpdated({
+      action: "toggled",
+      ruleId: rule.id,
+      enabled: rule.enabled,
+    });
 
     logAudit({
       eventType: "POLICY_TOGGLED",

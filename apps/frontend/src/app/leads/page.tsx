@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api, type LeadSummary } from "@/lib/api";
+import { getSocket } from "@/lib/socket";
+import { ActivityStream } from "@/components/activity-stream";
 import { Users, Loader2 } from "lucide-react";
 
 export default function LeadsPage() {
@@ -10,7 +12,7 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<string>("");
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     api
       .listLeads({
@@ -27,11 +29,61 @@ export default function LeadsPage() {
         setTotal(0);
       })
       .finally(() => setLoading(false));
-  };
+  }, [status]);
 
   useEffect(() => {
     load();
-  }, [status]);
+  }, [load]);
+
+  useEffect(() => {
+    const sock = getSocket();
+
+    const onCreated = (row: {
+      leadId: string;
+      website: string;
+      status: string;
+      expiresAt: string | null;
+      leadScore?: number;
+      priority?: string;
+      name?: string;
+    }) => {
+      setLeads((prev) => {
+        if (prev.some((l) => l.id === row.leadId)) return prev;
+        const item: LeadSummary = {
+          id: row.leadId,
+          website: row.website,
+          name: row.name ?? row.website,
+          leadScore: row.leadScore ?? 0,
+          confidence: 0,
+          priority: row.priority ?? "LOW",
+          status: row.status,
+          expiresAt: row.expiresAt,
+          pinned: false,
+          tags: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        return [item, ...prev];
+      });
+      setTotal((t) => t + 1);
+    };
+
+    const onUpdated = () => {
+      load();
+    };
+
+    sock.on("lead:created", onCreated);
+    sock.on("lead:updated", onUpdated);
+    sock.on("lead:saved", onUpdated);
+    sock.on("lead:deleted", onUpdated);
+
+    return () => {
+      sock.off("lead:created", onCreated);
+      sock.off("lead:updated", onUpdated);
+      sock.off("lead:saved", onUpdated);
+      sock.off("lead:deleted", onUpdated);
+    };
+  }, [load]);
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -64,6 +116,8 @@ export default function LeadsPage() {
           <option value="SAVED">Saved</option>
         </select>
       </div>
+
+      <ActivityStream mode="ingestion" />
 
       {loading && leads.length === 0 ? (
         <div className="glass-card p-12 flex justify-center">

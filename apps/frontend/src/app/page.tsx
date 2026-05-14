@@ -1,7 +1,10 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+
+import { useState, useRef, useEffect, useCallback } from "react";
 import { api, type Conversation } from "@/lib/api";
-import { Send, Plus, MessageSquare, Zap, Sparkles } from "lucide-react";
+import { getSocket } from "@/lib/socket";
+import { ActivityStream } from "@/components/activity-stream";
+import { Send, Plus, MessageSquare, Sparkles } from "lucide-react";
 
 interface ChatMessage {
   role: string;
@@ -26,7 +29,7 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const loadConversation = async (id: string) => {
+  const loadConversation = useCallback(async (id: string) => {
     setActiveId(id);
     try {
       const r = await api.getConversation(id);
@@ -38,7 +41,20 @@ export default function ChatPage() {
     } catch {
       setMessages([]);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const s = getSocket();
+    const onSync = (p: { conversationId: string }) => {
+      if (activeId && p.conversationId === activeId) {
+        void loadConversation(activeId);
+      }
+    };
+    s.on("conversation:sync", onSync);
+    return () => {
+      s.off("conversation:sync", onSync);
+    };
+  }, [activeId, loadConversation]);
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -97,7 +113,7 @@ export default function ChatPage() {
           </>
         ) : (
           conversations.map((c) => (
-            <button key={c.id} onClick={() => loadConversation(c.id)} className="text-left px-3 py-2 rounded-xl text-xs truncate transition-all duration-200" style={{ background: activeId === c.id ? "rgba(49, 51, 54, 0.1)" : "transparent", color: activeId === c.id ? "#F8FAFC" : "#64748B", border: activeId === c.id ? "1px solid rgba(237, 242, 248, 0.2)" : "1px solid transparent" }}>
+            <button key={c.id} onClick={() => void loadConversation(c.id)} className="text-left px-3 py-2 rounded-xl text-xs truncate transition-all duration-200" style={{ background: activeId === c.id ? "rgba(49, 51, 54, 0.1)" : "transparent", color: activeId === c.id ? "#F8FAFC" : "#64748B", border: activeId === c.id ? "1px solid rgba(237, 242, 248, 0.2)" : "1px solid transparent" }}>
               <div className="flex items-center gap-2">
                 <MessageSquare size={12} style={{ opacity: 0.5 }} />
                 <span className="truncate">{c.title}</span>
@@ -108,6 +124,7 @@ export default function ChatPage() {
       </div>
 
       {/* Chat Area */}
+      <div className="flex-1 flex flex-col gap-3 min-w-0">
       <div className="flex-1   glass-card  flex flex-col" style={{ borderRadius: 20 }}>
         <div className="flex-1   bg-[#161617] overflow-y-auto p-6 space-y-4">
           {messages.length === 0 && (
@@ -176,6 +193,9 @@ export default function ChatPage() {
             </button>
           </div>
         </div>
+      </div>
+
+        <ActivityStream conversationId={activeId} />
       </div>
     </div>
   );
