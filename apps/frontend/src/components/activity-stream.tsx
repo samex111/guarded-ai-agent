@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getSocket } from "@/lib/socket";
 import { fromScrapePhase } from "@/lib/execution-humanize";
 
@@ -34,6 +34,11 @@ export function ActivityStream({
   mode?: "full" | "ingestion";
 }) {
   const [items, setItems] = useState<ActivityItem[]>([]);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [items]);
 
   useEffect(() => {
     const sock = getSocket();
@@ -42,8 +47,8 @@ export function ActivityStream({
       if (!matchesConversationFilter(conversationId ?? null, payloadConv)) return;
       setItems((prev) => {
         const next: ActivityItem = {
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          at: Date.now(),
+          id:   `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          at:   Date.now(),
           text,
         };
         return [...prev, next].slice(-maxItems);
@@ -56,36 +61,20 @@ export function ActivityStream({
     const onPolicy = (d: { conversationId: string; toolName: string }) => {
       push(`🛡 Checking policy for ${d.toolName}…`, d.conversationId);
     };
-    const onToolStart = (d: {
-      conversationId?: string;
-      toolName: string;
-      serverName: string;
-    }) => {
+    const onToolStart = (d: { conversationId?: string; toolName: string; serverName: string }) => {
       push(`⚡ ${d.toolName} — ${d.serverName}`, d.conversationId);
     };
-    const onToolDone = (d: {
-      conversationId?: string;
-      toolName: string;
-      success: boolean;
-      latencyMs: number;
-    }) => {
+    const onToolDone = (d: { conversationId?: string; toolName: string; success: boolean; latencyMs: number }) => {
       const icon = d.success ? "✅" : "❌";
       push(`${icon} ${d.toolName} completed (${d.latencyMs}ms)`, d.conversationId);
     };
-    const onToolFail = (d: {
-      conversationId?: string;
-      toolName: string;
-      error: string;
-    }) => {
+    const onToolFail = (d: { conversationId?: string; toolName: string; error: string }) => {
       push(`❌ ${d.toolName} failed: ${d.error.slice(0, 120)}`, d.conversationId);
     };
     const onBlocked = (d: { conversationId: string; toolName: string; reason: string }) => {
       push(`🚫 Blocked ${d.toolName}: ${d.reason.slice(0, 100)}`, d.conversationId);
     };
-    const onApprovalPending = (d: {
-      conversationId: string;
-      toolName: string;
-    }) => {
+    const onApprovalPending = (d: { conversationId: string; toolName: string }) => {
       push(`⏳ Approval required: ${d.toolName}`, d.conversationId);
     };
     const onApprovalApproved = (d: { conversationId: string; toolName: string }) => {
@@ -110,13 +99,13 @@ export function ActivityStream({
     };
 
     if (mode === "full") {
-      sock.on("agent:thinking", onThinking);
-      sock.on("policy:checking", onPolicy);
-      sock.on("tool:started", onToolStart);
-      sock.on("tool:completed", onToolDone);
-      sock.on("tool:failed", onToolFail);
-      sock.on("tool:blocked", onBlocked);
-      sock.on("approval:pending", onApprovalPending);
+      sock.on("agent:thinking",    onThinking);
+      sock.on("policy:checking",   onPolicy);
+      sock.on("tool:started",      onToolStart);
+      sock.on("tool:completed",    onToolDone);
+      sock.on("tool:failed",       onToolFail);
+      sock.on("tool:blocked",      onBlocked);
+      sock.on("approval:pending",  onApprovalPending);
       sock.on("approval:approved", onApprovalApproved);
       sock.on("approval:rejected", onApprovalRejected);
       sock.on("approval:resolved", onApprovalResolved);
@@ -125,13 +114,13 @@ export function ActivityStream({
 
     return () => {
       if (mode === "full") {
-        sock.off("agent:thinking", onThinking);
-        sock.off("policy:checking", onPolicy);
-        sock.off("tool:started", onToolStart);
-        sock.off("tool:completed", onToolDone);
-        sock.off("tool:failed", onToolFail);
-        sock.off("tool:blocked", onBlocked);
-        sock.off("approval:pending", onApprovalPending);
+        sock.off("agent:thinking",    onThinking);
+        sock.off("policy:checking",   onPolicy);
+        sock.off("tool:started",      onToolStart);
+        sock.off("tool:completed",    onToolDone);
+        sock.off("tool:failed",       onToolFail);
+        sock.off("tool:blocked",      onBlocked);
+        sock.off("approval:pending",  onApprovalPending);
         sock.off("approval:approved", onApprovalApproved);
         sock.off("approval:rejected", onApprovalRejected);
         sock.off("approval:resolved", onApprovalResolved);
@@ -144,20 +133,50 @@ export function ActivityStream({
 
   return (
     <div
-      className="rounded-2xl p-3 text-xs space-y-1.5 max-h-64 overflow-y-auto"
       style={{
-        background: "rgba(22, 22, 23, 0.85)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius:    "var(--radius-lg)",
+        padding:         "12px 14px",
+        maxHeight:       240,
+        overflowY:       "auto",
+        background:      "rgba(18,19,21,0.85)",
+        border:          "1px solid var(--border-secondary)",
+        backdropFilter:  "blur(12px)",
+        display:         "flex",
+        flexDirection:   "column",
+        gap:             4,
       }}
     >
-      <div className="font-semibold text-[10px] uppercase tracking-wider mb-1" style={{ color: "#64748B" }}>
+      {/* Header */}
+      <div
+        style={{
+          fontSize:       "10px",
+          fontWeight:     "var(--font-semibold)",
+          textTransform:  "uppercase",
+          letterSpacing:  "0.10em",
+          color:          "var(--text-disabled)",
+          marginBottom:   4,
+        }}
+      >
         Live activity
       </div>
+
+      {/* Items */}
       {items.map((a) => (
-        <div key={a.id} className="leading-snug" style={{ color: "#CBD5E1" }}>
+        <div
+          key={a.id}
+          className="animate-fade-in"
+          style={{
+            fontSize:    "var(--text-xs)",
+            lineHeight:  1.6,
+            color:       "var(--text-muted)",
+            fontFamily:  "var(--font-mono)",
+          }}
+        >
           {a.text}
         </div>
       ))}
+
+      <div ref={bottomRef} />
     </div>
   );
 }

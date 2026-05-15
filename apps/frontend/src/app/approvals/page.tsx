@@ -1,26 +1,26 @@
 "use client";
 import { useState, useEffect } from "react";
 import { api, type Approval } from "@/lib/api";
-import { CheckCircle2, XCircle, Clock, Shield } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, ShieldAlert } from "lucide-react";
 
 function ApprovalSkeleton() {
   return (
-    <div className="space-y-3">
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {[1, 2].map((i) => (
-        <div key={i} className="glass-card p-5">
-          <div className="flex items-start justify-between">
-            <div className="space-y-2.5 flex-1">
-              <div className="flex items-center gap-3">
-                <div className="skeleton-line h-4 w-4 rounded" />
-                <div className="skeleton-line h-4 w-28" />
-                <div className="skeleton-line h-5 w-16 rounded-full" />
+        <div key={i} className="glass-card" style={{ padding: "20px" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div className="skeleton-line" style={{ height: 14, width: 14, borderRadius: 4 }} />
+                <div className="skeleton-line" style={{ height: 14, width: 120 }} />
+                <div className="skeleton-line" style={{ height: 18, width: 70, borderRadius: 999 }} />
               </div>
-              <div className="skeleton-line h-3 w-72" />
-              <div className="skeleton-line h-3 w-40" />
+              <div className="skeleton-line" style={{ height: 12, width: 280 }} />
+              <div className="skeleton-line" style={{ height: 12, width: 160 }} />
             </div>
-            <div className="flex gap-2">
-              <div className="skeleton-line h-8 w-24 rounded-xl" />
-              <div className="skeleton-line h-8 w-20 rounded-xl" />
+            <div style={{ display: "flex", gap: 8 }}>
+              <div className="skeleton-line" style={{ height: 34, width: 90, borderRadius: "var(--radius-md)" }} />
+              <div className="skeleton-line" style={{ height: 34, width: 80, borderRadius: "var(--radius-md)" }} />
             </div>
           </div>
         </div>
@@ -31,16 +31,20 @@ function ApprovalSkeleton() {
 
 export default function ApprovalsPage() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]     = useState(true);
 
   const load = () => {
     setLoading(true);
     api.listApprovals().then((r) => setApprovals(r.data)).catch(() => {}).finally(() => setLoading(false));
   };
-  useEffect(() => { load(); const interval = setInterval(load, 5000); return () => clearInterval(interval); }, []);
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const approve = async (id: string) => { await api.approveRequest(id); load(); };
-  const reject = async (id: string) => { await api.rejectRequest(id); load(); };
+  const reject  = async (id: string) => { await api.rejectRequest(id);  load(); };
 
   const timeLeft = (expiresAt: string) => {
     const ms = new Date(expiresAt).getTime() - Date.now();
@@ -51,53 +55,185 @@ export default function ApprovalsPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.08))", border: "1px solid rgba(245,158,11,0.2)" }}>
-          <Shield size={20} style={{ color: "#F59E0B" }} />
+    <div className="animate-fade-in-up" style={{ display: "flex", flexDirection: "column", gap: 32, maxWidth: 900 }}>
+
+      {/* ── Header ── */}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+        <div className="page-header-icon" style={{ width: 56, height: 56 }}>
+          <ShieldAlert size={22} style={{ color: "var(--accent-primary)", position: "relative" }} />
         </div>
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Pending Approvals</h1>
-          <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>Review and approve or reject tool execution requests.</p>
+          <h1 className="page-title">Pending Approvals</h1>
+          <p className="page-subtitle">Review and approve or reject tool execution requests.</p>
         </div>
       </div>
 
+      {/* ── Content ── */}
       {loading && approvals.length === 0 ? (
         <ApprovalSkeleton />
       ) : approvals.length === 0 ? (
-        <div className="glass-card p-16 text-center">
-          <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-4" style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05))", border: "1px solid rgba(34,197,94,0.2)" }}>
-            <CheckCircle2 size={28} style={{ color: "#22C55E" }} />
+        /* Empty state */
+        <div
+          className="glass-card"
+          style={{ padding: 64, textAlign: "center" }}
+        >
+          <div
+            style={{
+              width:           52,
+              height:          52,
+              borderRadius:    "var(--radius-xl)",
+              background:      "var(--gradient-card)",
+              border:          "1px solid var(--border-secondary)",
+              boxShadow:       "var(--shadow-card)",
+              display:         "flex",
+              alignItems:      "center",
+              justifyContent:  "center",
+              margin:          "0 auto 16px",
+              position:        "relative",
+              overflow:        "hidden",
+            }}
+          >
+            <div style={{ position: "absolute", inset: 0, background: "var(--gradient-overlay)" }} />
+            <CheckCircle2 size={22} style={{ color: "var(--accent-primary)", position: "relative" }} />
           </div>
-          <p className="text-base font-semibold">All Clear</p>
-          <p className="text-xs mt-1.5" style={{ color: "#64748B" }}>No tool executions waiting for approval.</p>
+          <p
+            style={{
+              fontSize:   "var(--text-lg)",
+              fontWeight: "var(--font-semibold)",
+              color:      "var(--text-primary)",
+            }}
+          >
+            All Clear
+          </p>
+          <p style={{ fontSize: "var(--text-sm)", color: "var(--text-subtle)", marginTop: 6 }}>
+            No tool executions waiting for approval.
+          </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {approvals.map((a) => (
-            <div key={a.id} className="glass-card p-5">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2.5">
-                  <div className="flex items-center gap-3">
-                    <Clock size={16} style={{ color: "#F59E0B" }} />
-                    <code className="text-sm font-semibold font-mono" style={{ color: "#3B82F6" }}>{a.toolName}</code>
-                    <span className="status-badge" style={{ background: "rgba(245,158,11,0.12)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)" }}>PENDING</span>
+            <div
+              key={a.id}
+              className="glass-card"
+              style={{ padding: "20px" }}
+            >
+              <div
+                style={{
+                  display:        "flex",
+                  alignItems:     "flex-start",
+                  justifyContent: "space-between",
+                  gap:            16,
+                  flexWrap:       "wrap",
+                }}
+              >
+                {/* Info */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <Clock size={15} style={{ color: "#F59E0B", flexShrink: 0 }} />
+                    <code
+                      style={{
+                        fontSize:   "var(--text-base)",
+                        fontFamily: "var(--font-mono)",
+                        fontWeight: "var(--font-semibold)",
+                        color:      "var(--text-primary)",
+                      }}
+                    >
+                      {a.toolName}
+                    </code>
+                    <span
+                      className="status-badge"
+                      style={{
+                        background: "rgba(245,158,11,0.08)",
+                        color:      "#F59E0B",
+                        border:     "1px solid rgba(245,158,11,0.15)",
+                      }}
+                    >
+                      PENDING
+                    </span>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-xs" style={{ color: "#64748B" }}>
-                      Arguments: <code className="px-1.5 py-0.5 rounded-md text-[11px]" style={{ background: "rgba(255,255,255,0.04)", color: "#CBD5E1" }}>{JSON.stringify(a.arguments, null, 0)}</code>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <p style={{ fontSize: "var(--text-sm)", color: "var(--text-subtle)" }}>
+                      Arguments:{" "}
+                      <code
+                        style={{
+                          padding:      "2px 8px",
+                          borderRadius: "var(--radius-sm)",
+                          fontSize:     "var(--text-xs)",
+                          fontFamily:   "var(--font-mono)",
+                          background:   "rgba(255,255,255,0.04)",
+                          color:        "var(--text-muted)",
+                          border:       "1px solid var(--border-primary)",
+                        }}
+                      >
+                        {JSON.stringify(a.arguments, null, 0)}
+                      </code>
                     </p>
-                    <p className="text-xs flex items-center gap-1.5" style={{ color: "#64748B" }}>
-                      <Clock size={11} /> Expires in: <span style={{ color: "#F59E0B" }}>{timeLeft(a.expiresAt)}</span>
+                    <p
+                      style={{
+                        fontSize:   "var(--text-xs)",
+                        color:      "var(--text-subtle)",
+                        display:    "flex",
+                        alignItems: "center",
+                        gap:        6,
+                      }}
+                    >
+                      <Clock size={10} />
+                      Expires in:{" "}
+                      <span style={{ color: "#F59E0B", fontWeight: "var(--font-medium)" }}>
+                        {timeLeft(a.expiresAt)}
+                      </span>
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button id={`btn-approve-${a.id}`} onClick={() => approve(a.id)} className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 hover:brightness-125" style={{ background: "rgba(34,197,94,0.12)", color: "#22C55E", border: "1px solid rgba(34,197,94,0.2)" }}>
-                    <CheckCircle2 size={14} /> Approve
+
+                {/* Actions */}
+                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                  <button
+                    id={`btn-approve-${a.id}`}
+                    onClick={() => approve(a.id)}
+                    style={{
+                      padding:      "8px 16px",
+                      borderRadius: "var(--radius-md)",
+                      fontSize:     "var(--text-sm)",
+                      fontWeight:   "var(--font-semibold)",
+                      display:      "flex",
+                      alignItems:   "center",
+                      gap:          6,
+                      cursor:       "pointer",
+                      background:   "rgba(214,235,253,0.05)",
+                      color:        "var(--accent-primary)",
+                      border:       "1px solid rgba(214,235,253,0.12)",
+                      transition:   "background var(--transition-fast)",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(214,235,253,0.08)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(214,235,253,0.05)")}
+                  >
+                    <CheckCircle2 size={13} />
+                    Approve
                   </button>
-                  <button id={`btn-reject-${a.id}`} onClick={() => reject(a.id)} className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 hover:brightness-125" style={{ background: "rgba(239,68,68,0.12)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.2)" }}>
-                    <XCircle size={14} /> Reject
+                  <button
+                    id={`btn-reject-${a.id}`}
+                    onClick={() => reject(a.id)}
+                    style={{
+                      padding:      "8px 16px",
+                      borderRadius: "var(--radius-md)",
+                      fontSize:     "var(--text-sm)",
+                      fontWeight:   "var(--font-semibold)",
+                      display:      "flex",
+                      alignItems:   "center",
+                      gap:          6,
+                      cursor:       "pointer",
+                      background:   "var(--danger-bg)",
+                      color:        "var(--danger)",
+                      border:       "1px solid var(--danger-border)",
+                      transition:   "background var(--transition-fast)",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(239,68,68,0.12)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "var(--danger-bg)")}
+                  >
+                    <XCircle size={13} />
+                    Reject
                   </button>
                 </div>
               </div>

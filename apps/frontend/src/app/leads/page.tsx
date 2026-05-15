@@ -6,20 +6,28 @@ import { getSocket } from "@/lib/socket";
 import { ActivityStream } from "@/components/activity-stream";
 import { Users, Loader2 } from "lucide-react";
 
+const priorityStyle = (p: string) => {
+  if (p === "HIGH")   return { bg: "rgba(239,68,68,0.08)",   color: "#EF4444", border: "rgba(239,68,68,0.14)" };
+  if (p === "MEDIUM") return { bg: "rgba(245,158,11,0.08)",  color: "#F59E0B", border: "rgba(245,158,11,0.14)" };
+  return                     { bg: "rgba(255,255,255,0.04)", color: "var(--text-subtle)", border: "var(--border-primary)" };
+};
+
+const statusStyle = (s: string) => {
+  if (s === "SAVED")      return { bg: "rgba(214,235,253,0.06)", color: "#D6EBFD", border: "rgba(214,235,253,0.10)" };
+  if (s === "TEMPORARY")  return { bg: "rgba(255,255,255,0.04)", color: "var(--text-muted)", border: "var(--border-secondary)" };
+  return                         { bg: "rgba(255,255,255,0.03)", color: "var(--text-subtle)", border: "var(--border-primary)" };
+};
+
 export default function LeadsPage() {
-  const [leads, setLeads] = useState<LeadSummary[]>([]);
-  const [total, setTotal] = useState(0);
+  const [leads, setLeads]   = useState<LeadSummary[]>([]);
+  const [total, setTotal]   = useState(0);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<string>("");
 
   const load = useCallback(() => {
     setLoading(true);
     api
-      .listLeads({
-        page: 1,
-        pageSize: 50,
-        status: status || undefined,
-      })
+      .listLeads({ page: 1, pageSize: 50, status: status || undefined })
       .then((r) => {
         setLeads(r.data.items);
         setTotal(r.data.total);
@@ -31,9 +39,7 @@ export default function LeadsPage() {
       .finally(() => setLoading(false));
   }, [status]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     const sock = getSocket();
@@ -50,64 +56,60 @@ export default function LeadsPage() {
       setLeads((prev) => {
         if (prev.some((l) => l.id === row.leadId)) return prev;
         const item: LeadSummary = {
-          id: row.leadId,
-          website: row.website,
-          name: row.name ?? row.website,
-          leadScore: row.leadScore ?? 0,
+          id:         row.leadId,
+          website:    row.website,
+          name:       row.name ?? row.website,
+          leadScore:  row.leadScore ?? 0,
           confidence: 0,
-          priority: row.priority ?? "LOW",
-          status: row.status,
-          expiresAt: row.expiresAt,
-          pinned: false,
-          tags: [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          priority:   row.priority ?? "LOW",
+          status:     row.status,
+          expiresAt:  row.expiresAt,
+          pinned:     false,
+          tags:       [],
+          createdAt:  new Date().toISOString(),
+          updatedAt:  new Date().toISOString(),
         };
         return [item, ...prev];
       });
       setTotal((t) => t + 1);
     };
 
-    const onUpdated = () => {
-      load();
-    };
+    const onUpdated = () => { load(); };
 
     sock.on("lead:created", onCreated);
     sock.on("lead:updated", onUpdated);
-    sock.on("lead:saved", onUpdated);
+    sock.on("lead:saved",   onUpdated);
     sock.on("lead:deleted", onUpdated);
 
     return () => {
       sock.off("lead:created", onCreated);
       sock.off("lead:updated", onUpdated);
-      sock.off("lead:saved", onUpdated);
+      sock.off("lead:saved",   onUpdated);
       sock.off("lead:deleted", onUpdated);
     };
   }, [load]);
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{
-              background: "linear-gradient(135deg, rgba(59,130,246,0.2), rgba(59,130,246,0.08))",
-              border: "1px solid rgba(59,130,246,0.2)",
-            }}
-          >
-            <Users size={20} style={{ color: "#3B82F6" }} />
+    <div className="animate-fade-in-up" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+
+      {/* ── Header ── */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+          <div className="page-header-icon" style={{ width: 56, height: 56 }}>
+            <Users size={22} style={{ color: "var(--accent-primary)", position: "relative" }} />
           </div>
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Leads</h1>
-            <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>
+            <h1 className="page-title">Leads</h1>
+            <p className="page-subtitle">
               {total} total — temporary leads expire after 24h unless saved.
             </p>
           </div>
         </div>
+
+        {/* Status filter */}
         <select
-          className="rounded-xl px-3 py-2 text-sm glass-card border border-white/10 bg-transparent"
-          style={{ color: "#E2E8F0" }}
+          className="premium-input"
+          style={{ width: "auto", minWidth: 160, marginTop: 8 }}
           value={status}
           onChange={(e) => setStatus(e.target.value)}
         >
@@ -117,50 +119,130 @@ export default function LeadsPage() {
         </select>
       </div>
 
+      {/* ── Activity stream ── */}
       <ActivityStream mode="ingestion" />
 
+      {/* ── Table / States ── */}
       {loading && leads.length === 0 ? (
-        <div className="glass-card p-12 flex justify-center">
-          <Loader2 className="animate-spin" style={{ color: "#3B82F6" }} size={28} />
+        <div className="glass-card" style={{ padding: 48, display: "flex", justifyContent: "center" }}>
+          <Loader2 className="animate-spin" style={{ color: "var(--accent-primary)" }} size={26} />
         </div>
       ) : leads.length === 0 ? (
-        <div className="glass-card p-16 text-center">
-          <p className="text-base font-semibold">No leads yet</p>
-          <p className="text-xs mt-1.5" style={{ color: "#64748B" }}>
-            Use the agent with <code className="text-[11px]">analyze_website</code> or POST{" "}
-            <code className="text-[11px]">/api/public/scrape</code>.
+        <div className="glass-card" style={{ padding: 64, textAlign: "center" }}>
+          <div
+            style={{
+              width:           52,
+              height:          52,
+              borderRadius:    "var(--radius-xl)",
+              background:      "var(--gradient-card)",
+              border:          "1px solid var(--border-secondary)",
+              boxShadow:       "var(--shadow-card)",
+              display:         "flex",
+              alignItems:      "center",
+              justifyContent:  "center",
+              margin:          "0 auto 16px",
+              position:        "relative",
+              overflow:        "hidden",
+            }}
+          >
+            <div style={{ position: "absolute", inset: 0, background: "var(--gradient-overlay)" }} />
+            <Users size={22} style={{ color: "var(--accent-primary)", position: "relative" }} />
+          </div>
+          <p style={{ fontSize: "var(--text-lg)", fontWeight: "var(--font-semibold)", color: "var(--text-primary)" }}>
+            No leads yet
+          </p>
+          <p style={{ fontSize: "var(--text-sm)", color: "var(--text-subtle)", marginTop: 6 }}>
+            Use the agent with{" "}
+            <code
+              style={{
+                fontFamily:   "var(--font-mono)",
+                fontSize:     "var(--text-xs)",
+                background:   "rgba(255,255,255,0.04)",
+                border:       "1px solid var(--border-primary)",
+                borderRadius: "var(--radius-sm)",
+                padding:      "1px 6px",
+                color:        "var(--accent-primary)",
+              }}
+            >
+              analyze_website
+            </code>{" "}
+            or POST{" "}
+            <code
+              style={{
+                fontFamily:   "var(--font-mono)",
+                fontSize:     "var(--text-xs)",
+                background:   "rgba(255,255,255,0.04)",
+                border:       "1px solid var(--border-primary)",
+                borderRadius: "var(--radius-sm)",
+                padding:      "1px 6px",
+                color:        "var(--text-muted)",
+              }}
+            >
+              /api/public/scrape
+            </code>
+            .
           </p>
         </div>
       ) : (
-        <div className="glass-card overflow-hidden">
-          <table className="w-full text-left text-sm">
+        <div className="glass-card" style={{ overflow: "hidden" }}>
+          <table className="premium-table">
             <thead>
-              <tr className="border-b border-white/10" style={{ color: "#94A3B8" }}>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Website</th>
-                <th className="px-4 py-3 font-medium">Score</th>
-                <th className="px-4 py-3 font-medium">Priority</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Expires</th>
+              <tr>
+                <th>Name</th>
+                <th>Website</th>
+                <th>Score</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Expires</th>
               </tr>
             </thead>
             <tbody>
-              {leads.map((L) => (
-                <tr key={L.id} className="border-b border-white/5 hover:bg-white/[0.03]">
-                  <td className="px-4 py-3 font-medium" style={{ color: "#F1F5F9" }}>
-                    {L.name || "—"}
-                  </td>
-                  <td className="px-4 py-3 max-w-[220px] truncate" style={{ color: "#94A3B8" }}>
-                    {L.website}
-                  </td>
-                  <td className="px-4 py-3">{L.leadScore}</td>
-                  <td className="px-4 py-3">{L.priority}</td>
-                  <td className="px-4 py-3">{L.status}</td>
-                  <td className="px-4 py-3 text-xs" style={{ color: "#64748B" }}>
-                    {L.expiresAt ? new Date(L.expiresAt).toLocaleString() : "—"}
-                  </td>
-                </tr>
-              ))}
+              {leads.map((L) => {
+                const pStyle = priorityStyle(L.priority);
+                const sStyle = statusStyle(L.status);
+                return (
+                  <tr key={L.id}>
+                    <td style={{ color: "var(--text-primary)", fontWeight: "var(--font-medium)" }}>
+                      {L.name || "—"}
+                    </td>
+                    <td
+                      style={{
+                        maxWidth:     220,
+                        overflow:     "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace:   "nowrap",
+                        color:        "var(--text-subtle)",
+                        fontFamily:   "var(--font-mono)",
+                        fontSize:     "var(--text-xs)",
+                      }}
+                    >
+                      {L.website}
+                    </td>
+                    <td style={{ color: "var(--text-muted)", fontWeight: "var(--font-medium)" }}>
+                      {L.leadScore}
+                    </td>
+                    <td>
+                      <span
+                        className="status-badge"
+                        style={{ background: pStyle.bg, color: pStyle.color, border: `1px solid ${pStyle.border}` }}
+                      >
+                        {L.priority}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className="status-badge"
+                        style={{ background: sStyle.bg, color: sStyle.color, border: `1px solid ${sStyle.border}` }}
+                      >
+                        {L.status}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: "var(--text-xs)", color: "var(--text-disabled)", whiteSpace: "nowrap" }}>
+                      {L.expiresAt ? new Date(L.expiresAt).toLocaleString() : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

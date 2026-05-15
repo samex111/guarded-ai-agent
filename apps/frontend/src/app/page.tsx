@@ -20,13 +20,29 @@ interface ChatMessage {
 
 function ThinkingInline() {
   return (
-    <div className="flex items-center gap-2.5 py-1 text-[12px]" style={{ color: "#64748B" }}>
-      <span className="flex gap-1">
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "4px 0",
+        fontSize: "var(--text-xs)",
+        color: "var(--text-subtle)",
+      }}
+    >
+      <span style={{ display: "flex", gap: 4 }}>
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="h-1.5 w-1.5 rounded-full bg-sky-400/90 animate-thinking-dot"
-            style={{ animationDelay: `${i * 160}ms` }}
+            className="animate-thinking-dot"
+            style={{
+              display:      "inline-block",
+              width:        6,
+              height:       6,
+              borderRadius: "var(--radius-full)",
+              background:   "var(--accent-primary)",
+              animationDelay: `${i * 160}ms`,
+            }}
           />
         ))}
       </span>
@@ -37,12 +53,12 @@ function ThinkingInline() {
 
 export default function ChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [loadingConvs, setLoadingConvs] = useState(true);
-  const [socketConvId, setSocketConvId] = useState<string | null>(null);
+  const [activeId, setActiveId]           = useState<string | null>(null);
+  const [messages, setMessages]           = useState<ChatMessage[]>([]);
+  const [input, setInput]                 = useState("");
+  const [loading, setLoading]             = useState(false);
+  const [loadingConvs, setLoadingConvs]   = useState(true);
+  const [socketConvId, setSocketConvId]   = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const streamingAssistantIdRef = useRef<string | null>(null);
 
@@ -50,7 +66,7 @@ export default function ChatPage() {
     api
       .listConversations()
       .then((r) => setConversations(r.data))
-      .catch(() => { })
+      .catch(() => {})
       .finally(() => setLoadingConvs(false));
   }, []);
 
@@ -105,9 +121,7 @@ export default function ChatPage() {
       }
     };
     s.on("conversation:sync", onSync);
-    return () => {
-      s.off("conversation:sync", onSync);
-    };
+    return () => { s.off("conversation:sync", onSync); };
   }, [activeId, loadConversation]);
 
   const sendMessage = async () => {
@@ -131,13 +145,7 @@ export default function ChatPage() {
       setSocketConvId(convId);
       setMessages((prev) => [
         ...prev,
-        {
-          id: assistantId,
-          role: "ASSISTANT",
-          content: "",
-          executions: [],
-          streaming: true,
-        },
+        { id: assistantId, role: "ASSISTANT", content: "", executions: [], streaming: true },
       ]);
 
       const r = await api.chat(convId, msg);
@@ -152,12 +160,7 @@ export default function ChatPage() {
         );
         return withCollapsed.map((m) =>
           m.id === assistantId
-            ? {
-              ...m,
-              content: r.data.content,
-              toolCalls: r.data.toolCalls,
-              streaming: false,
-            }
+            ? { ...m, content: r.data.content, toolCalls: r.data.toolCalls, streaming: false }
             : m,
         );
       });
@@ -168,20 +171,20 @@ export default function ChatPage() {
         prev.map((m) =>
           aid && m.id === aid
             ? {
-              ...m,
-              content: errText,
-              streaming: false,
-              executions: [
-                ...(m.executions ?? []),
-                {
-                  id: `err-${Date.now()}`,
-                  kind: "error" as const,
-                  title: "Couldn’t complete the request",
-                  subtitle: err instanceof Error ? err.message.slice(0, 120) : undefined,
-                  status: "error" as const,
-                },
-              ],
-            }
+                ...m,
+                content:   errText,
+                streaming: false,
+                executions: [
+                  ...(m.executions ?? []),
+                  {
+                    id:       `err-${Date.now()}`,
+                    kind:     "error" as const,
+                    title:    "Couldn't complete the request",
+                    subtitle: err instanceof Error ? err.message.slice(0, 120) : undefined,
+                    status:   "error" as const,
+                  },
+                ],
+              }
             : m,
         ),
       );
@@ -198,99 +201,248 @@ export default function ChatPage() {
   };
 
   const policyBadge = (action: string) => {
-    const styles: Record<string, { bg: string; text: string }> = {
-      DENY: { bg: "rgba(239,68,68,0.15)", text: "#EF4444" },
-      REQUIRE_APPROVAL: { bg: "rgba(245,158,11,0.15)", text: "#F59E0B" },
-      ALLOW: { bg: "rgba(34,197,94,0.15)", text: "#22C55E" },
+    const styles: Record<string, { bg: string; text: string; border: string }> = {
+      DENY:             { bg: "rgba(239,68,68,0.08)",   text: "#EF4444", border: "rgba(239,68,68,0.15)" },
+      REQUIRE_APPROVAL: { bg: "rgba(245,158,11,0.08)",  text: "#F59E0B", border: "rgba(245,158,11,0.15)" },
+      ALLOW:            { bg: "rgba(214,235,253,0.06)", text: "#D6EBFD", border: "rgba(214,235,253,0.10)" },
     };
     return styles[action] || styles.ALLOW;
   };
 
   return (
-    <div className="flex gap-5 h-[calc(100vh-3rem)] min-h-0">
+    <div
+      style={{
+        display:   "flex",
+        gap:       20,
+        height:    "calc(100vh - 48px)",
+        minHeight: 0,
+      }}
+    >
+      {/* ── Conversation List ── */}
       <div
-        className="w-56 shrink-0 rounded-2xl flex flex-col gap-0.5 overflow-y-auto"
         style={{
-          background: "rgba(31, 32, 32, 0.6)",
+          width:          220,
+          flexShrink:     0,
+          borderRadius:   "var(--radius-xl)",
+          display:        "flex",
+          flexDirection:  "column",
+          gap:            2,
+          overflowY:      "auto",
+          background:     "var(--gradient-card)",
+          border:         "1px solid var(--border-primary)",
+          boxShadow:      "var(--shadow-card)",
           backdropFilter: "blur(16px)",
-          border: "1px solid rgba(255,255,255,0.06)",
-          padding: 10,
+          padding:        10,
         }}
       >
+        {/* New Chat button */}
         <button
           id="btn-new-chat"
           onClick={newChat}
-          className="w-full py-2.5 sticky top-0 z-10 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 mb-2"
           style={{
-            background: "linear-gradient(135deg, #2563EB, #3B82F6)",
-            color: "#fff",
-            boxShadow: "0 4px 16px rgba(59,130,246,0.3)",
+            width:          "100%",
+            padding:        "9px 0",
+            position:       "sticky",
+            top:            0,
+            zIndex:         10,
+            borderRadius:   "var(--radius-md)",
+            fontSize:       "var(--text-sm)",
+            fontWeight:     "var(--font-semibold)",
+            display:        "flex",
+            alignItems:     "center",
+            justifyContent: "center",
+            gap:            6,
+            marginBottom:   6,
+            cursor:         "pointer",
+            background:     "rgba(255,255,255,0.07)",
+            color:          "var(--text-primary)",
+            border:         "1px solid var(--border-secondary)",
+            transition:     "background var(--transition-fast), border-color var(--transition-fast)",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.10)";
+            (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-hover)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.07)";
+            (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-secondary)";
           }}
         >
-          <Plus size={14} /> New Chat
+          <Plus size={13} />
+          New Chat
         </button>
 
+        {/* Conversation list */}
         {loadingConvs ? (
           <>
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="skeleton-line h-8 rounded-xl mb-1" />
+              <div key={i} className="skeleton-line" style={{ height: 32, borderRadius: "var(--radius-md)", marginBottom: 2 }} />
             ))}
           </>
         ) : (
-          conversations.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => void loadConversation(c.id)}
-              className="text-left px-4 flex py-4 rounded-xl text-xs truncate transition-all duration-200"
-              style={{
-                background: activeId === c.id ? "rgba(49, 51, 54, 0.1)" : "transparent",
-                color: activeId === c.id ? "#F8FAFC" : "#64748B",
-                border:
-                  activeId === c.id
-                    ? "1px solid rgba(237, 242, 248, 0.2)"
-                    : "1px solid transparent",
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <MessageSquare size={12} style={{ opacity: 0.5 }} />
-                <span className="truncate">{c.title}</span>
-              </div>
-            </button>
-          ))
+          conversations.map((c) => {
+            const isActive = activeId === c.id;
+            return (
+              <button
+                key={c.id}
+                onClick={() => void loadConversation(c.id)}
+                style={{
+                  textAlign:    "left",
+                  padding:      "8px 12px",
+                  borderRadius: "var(--radius-md)",
+                  fontSize:     "var(--text-sm)",
+                  cursor:       "pointer",
+                  background:   isActive ? "rgba(255,255,255,0.05)" : "transparent",
+                  color:        isActive ? "var(--text-primary)"    : "var(--text-subtle)",
+                  border:       isActive ? "1px solid var(--border-secondary)" : "1px solid transparent",
+                  transition:   "background var(--transition-fast), color var(--transition-fast)",
+                  overflow:     "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace:   "nowrap",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <MessageSquare size={11} style={{ opacity: 0.4, flexShrink: 0 }} />
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</span>
+                </div>
+              </button>
+            );
+          })
         )}
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0 min-w-0">
+      {/* ── Chat Main ── */}
+      <div
+        style={{
+          flex:          1,
+          display:       "flex",
+          flexDirection: "column",
+          minHeight:     0,
+          minWidth:      0,
+        }}
+      >
         <div
-          className="flex-1 glass-card flex flex-col min-h-0 overflow-hidden"
-          style={{ borderRadius: 20 }}
+          className="glass-card"
+          style={{
+            flex:          1,
+            display:       "flex",
+            flexDirection: "column",
+            minHeight:     0,
+            overflow:      "hidden",
+            borderRadius:  "var(--radius-xl)",
+          }}
         >
+          {/* Messages area */}
           <div
-            className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 space-y-4"
-            style={{ background: "#161617" }}
+            style={{
+              flex:             1,
+              minHeight:        0,
+              overflowY:        "auto",
+              overscrollBehavior: "contain",
+              padding:          "24px",
+              display:          "flex",
+              flexDirection:    "column",
+              gap:              16,
+              background:       "rgba(14,15,17,0.9)",
+            }}
           >
+            {/* Empty state */}
             {messages.length === 0 && (
-              <div className="h-full min-h-[240px] bg-transparent flex items-center justify-center">
-                <div className="text-center space-y-5">
-                  <div>
-                    <h2 className="text-xl font-semibold tracking-tight">Guarded AI Agent</h2>
-                    <p className="text-sm mt-1.5" style={{ color: "#64748B" }}>
-                      Send a message to start a conversation
-                    </p>
+              <div
+                style={{
+                  flex:           1,
+                  minHeight:      240,
+                  display:        "flex",
+                  alignItems:     "center",
+                  justifyContent: "center",
+                }}
+              >
+                <div style={{ textAlign: "center" }}>
+                  {/* Logo mark */}
+                  <div
+                    style={{
+                      width:           52,
+                      height:          52,
+                      borderRadius:    "var(--radius-xl)",
+                      background:      "var(--gradient-card)",
+                      border:          "1px solid var(--border-secondary)",
+                      boxShadow:       "var(--shadow-card)",
+                      display:         "flex",
+                      alignItems:      "center",
+                      justifyContent:  "center",
+                      margin:          "0 auto 20px",
+                      position:        "relative",
+                      overflow:        "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        position:   "absolute",
+                        inset:      0,
+                        background: "var(--gradient-overlay)",
+                      }}
+                    />
+                    <Sparkles size={20} style={{ color: "var(--accent-primary)", position: "relative" }} />
                   </div>
-                  <div className="flex flex-wrap gap-2 justify-center max-w-md mx-auto">
+
+                  <h2
+                    style={{
+                      fontSize:      "var(--text-xl)",
+                      fontWeight:    "var(--font-semibold)",
+                      letterSpacing: "var(--tracking-normal)",
+                      color:         "var(--text-primary)",
+                    }}
+                  >
+                    Guarded AI Agent
+                  </h2>
+                  <p
+                    style={{
+                      fontSize:  "var(--text-sm)",
+                      color:     "var(--text-subtle)",
+                      marginTop: 6,
+                    }}
+                  >
+                    Send a message to start a conversation
+                  </p>
+
+                  {/* Quick prompts */}
+                  <div
+                    style={{
+                      display:        "flex",
+                      flexWrap:       "wrap",
+                      gap:            8,
+                      justifyContent: "center",
+                      maxWidth:       400,
+                      margin:         "20px auto 0",
+                    }}
+                  >
                     {["List workspace files", "What tools are available?", "Read a file"].map((s) => (
                       <button
                         key={s}
                         onClick={() => setInput(s)}
-                        className="px-3 py-1.5 rounded-lg text-xs transition-all duration-200 hover:bg-blue-500/10 hover:border-blue-500/30"
                         style={{
-                          background: "rgba(255,255,255,0.04)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          color: "#CBD5E1",
+                          padding:      "6px 12px",
+                          borderRadius: "var(--radius-md)",
+                          fontSize:     "var(--text-xs)",
+                          cursor:       "pointer",
+                          background:   "rgba(255,255,255,0.03)",
+                          color:        "var(--text-muted)",
+                          border:       "1px solid var(--border-secondary)",
+                          display:      "flex",
+                          alignItems:   "center",
+                          gap:          6,
+                          transition:   "background var(--transition-fast), border-color var(--transition-fast)",
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
+                          (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-hover)";
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.03)";
+                          (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-secondary)";
                         }}
                       >
-                        <Sparkles size={10} className="inline mr-1.5" style={{ color: "#3B82F6" }} />
+                        <Sparkles size={10} style={{ color: "var(--accent-primary)", opacity: 0.8 }} />
                         {s}
                       </button>
                     ))}
@@ -299,28 +451,40 @@ export default function ChatPage() {
               </div>
             )}
 
+            {/* Messages */}
             {messages.map((m) => (
               <div
                 key={m.id}
-                className={`flex ${m.role === "USER" ? "justify-end" : "justify-start"} animate-fade-in-up`}
+                className="animate-fade-in-up"
+                style={{
+                  display:        "flex",
+                  justifyContent: m.role === "USER" ? "flex-end" : "flex-start",
+                }}
               >
                 <div
-                  className="max-w-[min(72vw,640px)] w-full sm:w-auto rounded-2xl px-4 py-3 text-sm"
                   style={{
+                    maxWidth:     "min(72vw, 640px)",
+                    borderRadius: "var(--radius-lg)",
+                    padding:      "12px 16px",
+                    fontSize:     "var(--text-base)",
+                    // USER: subtle white glass — ASSISTANT: dark glass
                     background:
                       m.role === "USER"
-                        ? "linear-gradient(135deg, #2563EB, #3B82F6)"
-                        : "rgba(255,255,255,0.04)",
-                    color: m.role === "USER" ? "#fff" : "#F8FAFC",
-                    border: m.role === "USER" ? "none" : "1px solid rgba(255,255,255,0.06)",
-                    boxShadow:
-                      m.role === "USER" ? "0 4px 16px rgba(59,130,246,0.25)" : "none",
+                        ? "rgba(255, 255, 255, 0.07)"
+                        : "rgba(255, 255, 255, 0.03)",
+                    color:  "var(--text-secondary)",
+                    border:
+                      m.role === "USER"
+                        ? "1px solid var(--border-hover)"
+                        : "1px solid var(--border-primary)",
                   }}
                 >
+                  {/* Thinking indicator */}
                   {m.role === "ASSISTANT" && m.streaming && (m.executions?.length ?? 0) === 0 ? (
                     <ThinkingInline />
                   ) : null}
 
+                  {/* Execution timeline */}
                   {(m.executions?.length ?? 0) > 0 ? (
                     <ExecutionTimeline
                       executions={m.executions ?? []}
@@ -330,24 +494,48 @@ export default function ChatPage() {
                     />
                   ) : null}
 
+                  {/* Message content */}
                   {m.content ? (
                     <pre
-                      className={`whitespace-pre-wrap font-[inherit] leading-relaxed ${(m.executions?.length ?? 0) > 0 ? "mt-3 pt-3 border-t border-white/[0.06]" : ""
-                        }`}
+                      style={{
+                        whiteSpace:  "pre-wrap",
+                        fontFamily:  "inherit",
+                        lineHeight:  1.65,
+                        color:       "var(--text-secondary)",
+                        marginTop:   (m.executions?.length ?? 0) > 0 ? 12 : 0,
+                        paddingTop:  (m.executions?.length ?? 0) > 0 ? 12 : 0,
+                        borderTop:   (m.executions?.length ?? 0) > 0 ? "1px solid var(--border-primary)" : "none",
+                      }}
                     >
                       {m.content}
                     </pre>
                   ) : null}
 
+                  {/* Tool call badges */}
                   {m.toolCalls && m.toolCalls.length > 0 ? (
                     <div
-                      className="mt-2.5 pt-2.5 space-y-1.5 border-t border-white/[0.08]"
-                      style={{ borderTopColor: m.role === "USER" ? "rgba(255,255,255,0.12)" : undefined }}
+                      style={{
+                        marginTop:   10,
+                        paddingTop:  10,
+                        display:     "flex",
+                        flexDirection: "column",
+                        gap:         6,
+                        borderTop:   "1px solid var(--border-primary)",
+                      }}
                     >
                       {m.toolCalls.map((tc, j) => {
                         const badge = policyBadge(tc.policyAction);
                         return (
-                          <div key={j} className="flex items-center gap-2 text-[11px] flex-wrap">
+                          <div
+                            key={j}
+                            style={{
+                              display:    "flex",
+                              alignItems: "center",
+                              gap:        8,
+                              flexWrap:   "wrap",
+                              fontSize:   "var(--text-xs)",
+                            }}
+                          >
                             <span>
                               {tc.policyAction === "DENY"
                                 ? "🚫"
@@ -357,12 +545,31 @@ export default function ChatPage() {
                                     ? "✅"
                                     : "❌"}
                             </span>
-                            <code className="font-mono opacity-80 truncate max-w-[200px]">{tc.toolName}</code>
-                            <span
-                              className="status-badge shrink-0"
-                              style={{ background: badge.bg, color: badge.text }}
+                            <code
+                              style={{
+                                fontFamily:   "var(--font-mono)",
+                                opacity:      0.8,
+                                overflow:     "hidden",
+                                textOverflow: "ellipsis",
+                                maxWidth:     200,
+                                color:        "var(--text-muted)",
+                              }}
                             >
-                              {tc.policyAction === "ALLOW" ? "Allowed" : tc.policyAction === "DENY" ? "Blocked" : "Approval"}
+                              {tc.toolName}
+                            </code>
+                            <span
+                              className="status-badge"
+                              style={{
+                                background: badge.bg,
+                                color:      badge.text,
+                                border:     `1px solid ${badge.border}`,
+                              }}
+                            >
+                              {tc.policyAction === "ALLOW"
+                                ? "Allowed"
+                                : tc.policyAction === "DENY"
+                                  ? "Blocked"
+                                  : "Approval"}
                             </span>
                           </div>
                         );
@@ -376,11 +583,16 @@ export default function ChatPage() {
             <div ref={bottomRef} />
           </div>
 
+          {/* Input area */}
           <div
-            className="shrink-0 p-4 border-t border-white/[0.06]"
-            style={{ backgroundColor: "#161617" }}
+            style={{
+              flexShrink:  0,
+              padding:     "14px 16px",
+              borderTop:   "1px solid var(--border-primary)",
+              background:  "rgba(12,12,13,0.95)",
+            }}
           >
-            <div className="flex gap-3 items-center">
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               <input
                 id="chat-input"
                 value={input}
@@ -388,19 +600,37 @@ export default function ChatPage() {
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && void sendMessage()}
                 placeholder="Ask the AI agent…"
                 disabled={loading}
-                className="bg-[#161617] premium-input flex-1 min-w-0"
-                style={{ borderRadius: 14, padding: "12px 18px" }}
+                className="premium-input"
+                style={{ borderRadius: "var(--radius-md)", padding: "12px 16px" }}
               />
               <button
                 id="btn-send"
                 type="button"
                 onClick={() => void sendMessage()}
                 disabled={loading || !input.trim()}
-                className="p-3 rounded-xl transition-all duration-300 disabled:opacity-30 shrink-0"
                 style={{
-                  background: "linear-gradient(135deg, #2563EB, #3B82F6)",
-                  color: "#fff",
-                  boxShadow: input.trim() ? "0 4px 16px rgba(59,130,246,0.3)" : "none",
+                  padding:        "12px 14px",
+                  borderRadius:   "var(--radius-md)",
+                  cursor:         loading || !input.trim() ? "not-allowed" : "pointer",
+                  opacity:        loading || !input.trim() ? 0.3 : 1,
+                  flexShrink:     0,
+                  background:     "rgba(255,255,255,0.08)",
+                  color:          "var(--text-primary)",
+                  border:         "1px solid var(--border-secondary)",
+                  display:        "flex",
+                  alignItems:     "center",
+                  justifyContent: "center",
+                  transition:     "background var(--transition-fast), border-color var(--transition-fast)",
+                }}
+                onMouseEnter={(e) => {
+                  if (!loading && input.trim()) {
+                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)";
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-hover)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)";
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-secondary)";
                 }}
               >
                 <Send size={16} />

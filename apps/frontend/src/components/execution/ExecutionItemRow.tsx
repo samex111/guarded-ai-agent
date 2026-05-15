@@ -6,22 +6,46 @@ import { kindIcon } from "@/lib/execution-humanize";
 function Chip({ toolName, serverLabel }: { toolName: string; serverLabel?: string }) {
   return (
     <div
-      className="inline-flex max-w-full flex-col gap-0.5 rounded-lg px-2.5 py-1.5 text-left animate-execution-in"
+      className="animate-execution-in"
       style={{
-        background: "rgba(59, 130, 246, 0.08)",
-        border: "1px solid rgba(59, 130, 246, 0.2)",
+        display:        "inline-flex",
+        maxWidth:       "100%",
+        flexDirection:  "column",
+        gap:            2,
+        borderRadius:   "var(--radius-sm)",
+        padding:        "5px 10px",
+        textAlign:      "left",
+        background:     "var(--accent-soft)",
+        border:         "1px solid rgba(214,235,253,0.08)",
       }}
     >
-      <div className="flex items-center gap-1.5 min-w-0">
-        <span className="shrink-0 text-[11px]" aria-hidden>
-          ⚡
-        </span>
-        <span className="text-[11px] font-medium truncate" style={{ color: "#E2E8F0" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+        <span style={{ flexShrink: 0, fontSize: 11 }} aria-hidden>⚡</span>
+        <span
+          style={{
+            fontSize:     "var(--text-xs)",
+            fontWeight:   "var(--font-medium)",
+            overflow:     "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace:   "nowrap",
+            color:        "var(--text-secondary)",
+            fontFamily:   "var(--font-mono)",
+          }}
+        >
           {toolName}
         </span>
       </div>
       {serverLabel ? (
-        <span className="text-[10px] truncate pl-5" style={{ color: "#64748B" }}>
+        <span
+          style={{
+            fontSize:     "10px",
+            overflow:     "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace:   "nowrap",
+            paddingLeft:  18,
+            color:        "var(--text-disabled)",
+          }}
+        >
           {serverLabel}
         </span>
       ) : null}
@@ -30,36 +54,57 @@ function Chip({ toolName, serverLabel }: { toolName: string; serverLabel?: strin
 }
 
 export function ExecutionItemRow({ item }: { item: ExecutionRecord }) {
-  const icon = item.kind === "tool" && item.toolName && item.serverLabel
-    ? null
-    : (
-        <span className="shrink-0 w-5 text-center text-[12px]" aria-hidden>
-          {item.kind === "approval" && item.status === "done"
-            ? "✅"
-            : item.kind === "approval" && item.status === "error"
-              ? "❌"
-              : kindIcon(item.kind)}
-        </span>
-      );
+  const icon =
+    item.kind === "tool" && item.toolName && item.serverLabel
+      ? null
+      : (
+          <span
+            style={{ flexShrink: 0, width: 18, textAlign: "center", fontSize: 12 }}
+            aria-hidden
+          >
+            {item.kind === "approval" && item.status === "done"
+              ? "✅"
+              : item.kind === "approval" && item.status === "error"
+                ? "❌"
+                : kindIcon(item.kind)}
+          </span>
+        );
 
   return (
     <div
-      className="flex gap-2 py-1.5 animate-execution-in border-b border-white/[0.04] last:border-0"
+      className="animate-execution-in"
+      style={{
+        display:     "flex",
+        gap:         8,
+        padding:     "5px 0",
+        borderBottom: "1px solid var(--border-primary)",
+        alignItems:  "flex-start",
+      }}
       data-status={item.status}
     >
       {item.kind === "tool" && item.toolName && item.serverLabel ? (
-        <div className="flex gap-2 min-w-0 flex-1 items-start">
+        <div style={{ display: "flex", gap: 8, minWidth: 0, flex: 1, alignItems: "flex-start" }}>
           <Chip toolName={item.toolName} serverLabel={item.serverLabel} />
         </div>
       ) : (
         <>
           {icon}
-          <div className="min-w-0 flex-1 space-y-0.5">
-            <p className="text-[12px] leading-snug" style={{ color: "#E2E8F0" }}>
+          <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+            <p style={{ fontSize: "var(--text-xs)", lineHeight: 1.5, color: "var(--text-muted)" }}>
               {item.title}
             </p>
             {item.subtitle ? (
-              <p className="text-[11px] leading-snug line-clamp-2" style={{ color: "#64748B" }}>
+              <p
+                style={{
+                  fontSize:   "11px",
+                  lineHeight: 1.4,
+                  overflow:   "hidden",
+                  display:    "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  color:      "var(--text-subtle)",
+                }}
+              >
                 {item.subtitle}
               </p>
             ) : null}

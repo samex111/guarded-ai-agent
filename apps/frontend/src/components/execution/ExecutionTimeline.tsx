@@ -36,33 +36,58 @@ export function ExecutionTimeline({
 
   if (executions.length === 0) return null;
 
-  const summary =
-    executions.length === 1
-      ? "1 step"
-      : `${executions.length} steps`;
+  const summary = executions.length === 1 ? "1 step" : `${executions.length} steps`;
 
   return (
     <div
-      className="mt-2 rounded-xl overflow-hidden"
       style={{
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.06)",
+        marginTop:    8,
+        borderRadius: "var(--radius-md)",
+        overflow:     "hidden",
+        background:   "rgba(255,255,255,0.02)",
+        border:       "1px solid var(--border-primary)",
       }}
     >
+      {/* Toggle row */}
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] transition-colors hover:bg-white/[0.04]"
-        style={{ color: "#94A3B8" }}
+        style={{
+          display:     "flex",
+          width:       "100%",
+          alignItems:  "center",
+          gap:         8,
+          padding:     "6px 12px",
+          textAlign:   "left",
+          fontSize:    "var(--text-xs)",
+          cursor:      "pointer",
+          background:  "transparent",
+          color:       "var(--text-subtle)",
+          border:      "none",
+          transition:  "background var(--transition-fast)",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
+        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
-        {expanded ? <ChevronDown size={14} className="shrink-0 opacity-70" /> : <ChevronRight size={14} className="shrink-0 opacity-70" />}
-        <span className="font-medium" style={{ color: "#CBD5E1" }}>
+        {expanded
+          ? <ChevronDown  size={13} style={{ flexShrink: 0, opacity: 0.6 }} />
+          : <ChevronRight size={13} style={{ flexShrink: 0, opacity: 0.6 }} />
+        }
+        <span style={{ fontWeight: "var(--font-medium)", color: "var(--text-muted)" }}>
           {streaming ? "In progress" : "Run details"}
         </span>
-        <span className="opacity-70">· {summary}</span>
+        <span style={{ opacity: 0.5 }}>· {summary}</span>
       </button>
+
       {expanded ? (
-        <div className="px-3 pb-2 pt-0 max-h-64 overflow-y-auto overscroll-contain">
+        <div
+          style={{
+            padding:          "0 12px 8px",
+            maxHeight:        240,
+            overflowY:        "auto",
+            overscrollBehavior: "contain",
+          }}
+        >
           {executions.map((ex) => (
             <ExecutionItemRow key={ex.id} item={ex} />
           ))}

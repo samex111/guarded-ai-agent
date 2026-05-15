@@ -5,19 +5,23 @@ import { ShieldCheck, Plus, Trash2, ToggleLeft, ToggleRight } from "lucide-react
 
 function PolicySkeleton() {
   return (
-    <div className="space-y-3">
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {[1, 2, 3].map((i) => (
-        <div key={i} className="glass-card p-4 flex items-center gap-4">
-          <div className="flex-1 space-y-2">
-            <div className="flex items-center gap-2.5">
-              <div className="skeleton-line h-4 w-40" />
-              <div className="skeleton-line h-5 w-20 rounded-full" />
+        <div
+          key={i}
+          className="glass-card"
+          style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: 16 }}
+        >
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div className="skeleton-line" style={{ height: 14, width: 140 }} />
+              <div className="skeleton-line" style={{ height: 18, width: 80, borderRadius: 999 }} />
             </div>
-            <div className="skeleton-line h-3 w-60" />
+            <div className="skeleton-line" style={{ height: 12, width: 220 }} />
           </div>
-          <div className="flex gap-2">
-            <div className="skeleton-line h-8 w-8 rounded-lg" />
-            <div className="skeleton-line h-8 w-8 rounded-lg" />
+          <div style={{ display: "flex", gap: 8 }}>
+            <div className="skeleton-line" style={{ height: 32, width: 32, borderRadius: "var(--radius-md)" }} />
+            <div className="skeleton-line" style={{ height: 32, width: 32, borderRadius: "var(--radius-md)" }} />
           </div>
         </div>
       ))}
@@ -26,10 +30,12 @@ function PolicySkeleton() {
 }
 
 export default function PoliciesPage() {
-  const [rules, setRules] = useState<PolicyRule[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [rules, setRules]           = useState<PolicyRule[]>([]);
+  const [loading, setLoading]       = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ name: "", description: "", ruleType: "BLOCK", action: "DENY", toolPattern: "*", priority: 0 });
+  const [form, setForm] = useState({
+    name: "", description: "", ruleType: "BLOCK", action: "DENY", toolPattern: "*", priority: 0,
+  });
 
   const load = () => {
     setLoading(true);
@@ -49,95 +55,240 @@ export default function PoliciesPage() {
   const remove = async (id: string) => { if (confirm("Delete this rule?")) { await api.deletePolicy(id); load(); } };
 
   const actionStyle = (action: string) => {
-    if (action === "DENY") return { bg: "rgba(239,68,68,0.12)", color: "#EF4444", border: "rgba(239,68,68,0.2)" };
-    if (action === "REQUIRE_APPROVAL") return { bg: "rgba(245,158,11,0.12)", color: "#F59E0B", border: "rgba(245,158,11,0.2)" };
-    return { bg: "rgba(34,197,94,0.12)", color: "#22C55E", border: "rgba(34,197,94,0.2)" };
+    if (action === "DENY")             return { bg: "rgba(239,68,68,0.08)",   color: "#EF4444", border: "rgba(239,68,68,0.15)" };
+    if (action === "REQUIRE_APPROVAL") return { bg: "rgba(245,158,11,0.08)",  color: "#F59E0B", border: "rgba(245,158,11,0.15)" };
+    return                                    { bg: "rgba(214,235,253,0.06)", color: "#D6EBFD", border: "rgba(214,235,253,0.10)" };
   };
 
+  const LabelText = ({ children }: { children: React.ReactNode }) => (
+    <label
+      style={{
+        display:        "block",
+        fontSize:       "var(--text-xs)",
+        fontWeight:     "var(--font-semibold)",
+        textTransform:  "uppercase",
+        letterSpacing:  "0.08em",
+        color:          "var(--text-subtle)",
+        marginBottom:   6,
+      }}
+    >
+      {children}
+    </label>
+  );
+
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.2), rgba(59,130,246,0.08))", border: "1px solid rgba(59,130,246,0.2)" }}>
-            <ShieldCheck size={20} style={{ color: "#3B82F6" }} />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">Policy Rules</h1>
-            <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>Guardrail rules enforce security. Changes take effect instantly via Redis.</p>
-          </div>
+    <div className="animate-fade-in-up" style={{ display: "flex", flexDirection: "column", gap: 32, maxWidth: 900 }}>
+
+      {/* ── Header ── */}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+        {/* Icon */}
+        <div
+          className="page-header-icon"
+          style={{ width: 56, height: 56 }}
+        >
+          <ShieldCheck size={22} style={{ color: "var(--accent-primary)", position: "relative" }} />
         </div>
-        <button id="btn-create-policy" onClick={() => setShowCreate(!showCreate)} className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all duration-300" style={{ background: "linear-gradient(135deg, #2563EB, #3B82F6)", color: "#fff", boxShadow: "0 4px 16px rgba(59,130,246,0.25)" }}>
-          <Plus size={14} /> New Rule
+
+        <div style={{ flex: 1 }}>
+          <h1 className="page-title">Policy Rules</h1>
+          <p className="page-subtitle" style={{ fontSize: "var(--text-md)" }}>
+            Guardrail rules enforce security. Changes take effect instantly via Redis.
+          </p>
+        </div>
+
+        <button
+          id="btn-create-policy"
+          onClick={() => setShowCreate(!showCreate)}
+          className="btn-primary"
+          style={{ marginTop: 8 }}
+        >
+          <Plus size={14} />
+          New Rule
         </button>
       </div>
 
-      {/* Create Form */}
+      {/* ── Create Form ── */}
       {showCreate && (
-        <div className="glass-card p-5 space-y-4 animate-fade-in-up">
-          <div className="grid grid-cols-2 gap-4">
+        <div
+          className="glass-card animate-fade-in-up"
+          style={{ padding: "var(--card-padding)" }}
+        >
+          <h3
+            style={{
+              fontSize:      "var(--text-lg)",
+              fontWeight:    "var(--font-semibold)",
+              letterSpacing: "var(--tracking-normal)",
+              color:         "var(--text-primary)",
+              marginBottom:  20,
+            }}
+          >
+            New Policy Rule
+          </h3>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div>
-              <label className="text-[11px] font-medium uppercase tracking-wider mb-1.5 block" style={{ color: "#64748B" }}>Name</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="premium-input w-full" />
+              <LabelText>Name</LabelText>
+              <input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="premium-input"
+                placeholder="e.g. Block file deletion"
+              />
             </div>
             <div>
-              <label className="text-[11px] font-medium uppercase tracking-wider mb-1.5 block" style={{ color: "#64748B" }}>Tool Pattern</label>
-              <input value={form.toolPattern} onChange={(e) => setForm({ ...form, toolPattern: e.target.value })} placeholder="e.g. delete_*, write_file" className="premium-input w-full" />
+              <LabelText>Tool Pattern</LabelText>
+              <input
+                value={form.toolPattern}
+                onChange={(e) => setForm({ ...form, toolPattern: e.target.value })}
+                placeholder="e.g. delete_*, write_file"
+                className="premium-input"
+              />
             </div>
             <div>
-              <label className="text-[11px] font-medium uppercase tracking-wider mb-1.5 block" style={{ color: "#64748B" }}>Rule Type</label>
-              <select value={form.ruleType} onChange={(e) => {
-                const rt = e.target.value;
-                const action = rt === "BLOCK" ? "DENY" : rt === "APPROVAL" ? "REQUIRE_APPROVAL" : "ALLOW";
-                setForm({ ...form, ruleType: rt, action });
-              }} className="premium-input w-full">
+              <LabelText>Rule Type</LabelText>
+              <select
+                value={form.ruleType}
+                onChange={(e) => {
+                  const rt = e.target.value;
+                  const action = rt === "BLOCK" ? "DENY" : rt === "APPROVAL" ? "REQUIRE_APPROVAL" : "ALLOW";
+                  setForm({ ...form, ruleType: rt, action });
+                }}
+                className="premium-input"
+              >
                 <option value="BLOCK">Block (DENY)</option>
                 <option value="APPROVAL">Require Approval</option>
                 <option value="VALIDATION">Input Validation</option>
               </select>
             </div>
             <div>
-              <label className="text-[11px] font-medium uppercase tracking-wider mb-1.5 block" style={{ color: "#64748B" }}>Priority</label>
-              <input type="number" value={form.priority} onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })} className="premium-input w-full" />
+              <LabelText>Priority</LabelText>
+              <input
+                type="number"
+                value={form.priority}
+                onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })}
+                className="premium-input"
+              />
             </div>
           </div>
-          <div>
-            <label className="text-[11px] font-medium uppercase tracking-wider mb-1.5 block" style={{ color: "#64748B" }}>Description</label>
-            <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="premium-input w-full" />
+
+          <div style={{ marginBottom: 20 }}>
+            <LabelText>Description</LabelText>
+            <input
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="premium-input"
+              placeholder="Optional description"
+            />
           </div>
-          <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-xl text-xs" style={{ color: "#64748B" }}>Cancel</button>
-            <button id="btn-save-policy" onClick={create} className="px-5 py-2 rounded-xl text-xs font-semibold" style={{ background: "linear-gradient(135deg, #2563EB, #3B82F6)", color: "#fff" }}>Save Rule</button>
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button
+              onClick={() => setShowCreate(false)}
+              className="btn-ghost"
+            >
+              Cancel
+            </button>
+            <button
+              id="btn-save-policy"
+              onClick={create}
+              className="btn-primary"
+            >
+              Save Rule
+            </button>
           </div>
         </div>
       )}
 
-      {/* Rules */}
-      {loading ? <PolicySkeleton /> : (
-        <div className="grid gap-3">
+      {/* ── Rules List ── */}
+      {loading ? (
+        <PolicySkeleton />
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {rules.map((rule) => {
             const as = actionStyle(rule.action);
             return (
-              <div key={rule.id} className="glass-card p-4 flex items-center gap-4 group">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-sm font-medium">{rule.name}</span>
-                    <span className="status-badge" style={{ background: as.bg, color: as.color, border: `1px solid ${as.border}` }}>{rule.action}</span>
-                    {!rule.enabled && <span className="status-badge" style={{ background: "rgba(255,255,255,0.05)", color: "#475569" }}>DISABLED</span>}
+              <div
+                key={rule.id}
+                className="glass-card"
+                style={{
+                  padding:    "16px 20px",
+                  display:    "flex",
+                  alignItems: "center",
+                  gap:        16,
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <span
+                      style={{
+                        fontSize:   "var(--text-base)",
+                        fontWeight: "var(--font-medium)",
+                        color:      "var(--text-primary)",
+                      }}
+                    >
+                      {rule.name}
+                    </span>
+                    <span
+                      className="status-badge"
+                      style={{ background: as.bg, color: as.color, border: `1px solid ${as.border}` }}
+                    >
+                      {rule.action}
+                    </span>
+                    {!rule.enabled && (
+                      <span
+                        className="status-badge"
+                        style={{
+                          background: "rgba(255,255,255,0.04)",
+                          color:      "var(--text-disabled)",
+                          border:     "1px solid var(--border-primary)",
+                        }}
+                      >
+                        DISABLED
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <span className="text-xs font-mono" style={{ color: "#64748B" }}>pattern: {rule.toolPattern}</span>
-                    <span className="text-xs" style={{ color: "#475569" }}>•</span>
-                    <span className="text-xs" style={{ color: "#64748B" }}>priority: {rule.priority}</span>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
+                    <code
+                      style={{
+                        fontSize:   "var(--text-xs)",
+                        fontFamily: "var(--font-mono)",
+                        color:      "var(--text-subtle)",
+                      }}
+                    >
+                      pattern: {rule.toolPattern}
+                    </code>
+                    <span style={{ color: "var(--text-disabled)", fontSize: 10 }}>•</span>
+                    <span style={{ fontSize: "var(--text-xs)", color: "var(--text-subtle)" }}>
+                      priority: {rule.priority}
+                    </span>
                   </div>
-                  {rule.description && <p className="text-xs mt-1" style={{ color: "#475569" }}>{rule.description}</p>}
+
+                  {rule.description && (
+                    <p style={{ fontSize: "var(--text-xs)", color: "var(--text-disabled)", marginTop: 4 }}>
+                      {rule.description}
+                    </p>
+                  )}
                 </div>
-                <div className="flex items-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => toggle(rule.id)} className="p-2 rounded-lg transition-all" style={{ color: rule.enabled ? "#22C55E" : "#475569" }}>
+
+                {/* Actions */}
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <button
+                    onClick={() => toggle(rule.id)}
+                    className="btn-ghost"
+                    style={{
+                      padding: "6px 8px",
+                      color: rule.enabled ? "#D6EBFD" : "var(--text-disabled)",
+                    }}
+                  >
                     {rule.enabled ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
                   </button>
-                  <button onClick={() => remove(rule.id)} className="p-2 rounded-lg transition-all hover:bg-red-500/10" style={{ color: "#EF4444" }}>
-                    <Trash2 size={16} />
+                  <button
+                    onClick={() => remove(rule.id)}
+                    className="btn-ghost"
+                    style={{ padding: "6px 8px", color: "var(--danger)" }}
+                  >
+                    <Trash2 size={15} />
                   </button>
                 </div>
               </div>
@@ -145,8 +296,19 @@ export default function PoliciesPage() {
           })}
         </div>
       )}
+
       {!loading && rules.length === 0 && (
-        <div className="glass-card p-12 text-center" style={{ color: "#64748B" }}>No policy rules configured.</div>
+        <div
+          className="glass-card"
+          style={{
+            padding:        48,
+            textAlign:      "center",
+            color:          "var(--text-subtle)",
+            fontSize:       "var(--text-base)",
+          }}
+        >
+          No policy rules configured.
+        </div>
       )}
     </div>
   );

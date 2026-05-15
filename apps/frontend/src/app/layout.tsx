@@ -4,7 +4,8 @@ import Sidebar from "@/components/Sidebar";
 
 export const metadata: Metadata = {
   title: "Guarded AI Agent — Dashboard",
-  description: "Policy management, approval workflows, and conversation tracing for the Guarded AI Agent platform.",
+  description:
+    "Policy management, approval workflows, and conversation tracing for the Guarded AI Agent platform.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -12,26 +13,35 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen" style={{ background: "#000000ff", color: "#F8FAFC" }}>
-        {/* Ambient background effects */}
-        <div className="fixed inset-0 pointer-events-none z-0">
+      <body
+        style={{
+          background: "linear-gradient(42deg, rgb(20, 21, 23), rgb(25, 27, 30))",
+          color: "var(--text-primary)",
+          fontFamily: "var(--font-primary)",
+        }}
+      >
+        {/* Ambient background — subtle, neutral, not cyberpunk */}
+        <div className="fixed inset-0 pointer-events-none z-0" aria-hidden>
           <div
-            className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full animate-float"
+            className="absolute top-0 left-1/4 w-[700px] h-[700px] rounded-full"
             style={{
-              background: "radial-gradient(circle, rgba(59,130,246,0.04) 0%, transparent 70%)",
-              filter: "blur(80px)",
+              background:
+                "radial-gradient(circle, rgba(214,235,253,0.025) 0%, transparent 70%)",
+              filter: "blur(100px)",
+              animation: "float 10s ease-in-out infinite",
             }}
           />
           <div
             className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full"
             style={{
-              background: "radial-gradient(circle, rgba(124,58,237,0.03) 0%, transparent 70%)",
+              background:
+                "radial-gradient(circle, rgba(255,255,255,0.015) 0%, transparent 70%)",
               filter: "blur(80px)",
-              animation: "float 8s ease-in-out infinite reverse",
+              animation: "float 14s ease-in-out infinite reverse",
             }}
           />
         </div>
@@ -39,7 +49,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Sidebar />
 
         {/* Main content area — offset for sidebar */}
-        <main className="ml-[240px] p-6 bg-black arelative z-10 min-h-screen">
+        <main
+          className="relative z-10 min-h-screen"
+          style={{
+            marginLeft: "var(--sidebar-width)",
+            padding: "24px",
+          }}
+        >
           {children}
         </main>
       </body>
