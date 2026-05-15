@@ -220,96 +220,183 @@ export default function ChatPage() {
     >
       {/* ── Conversation List ── */}
       <div
-        style={{
-          width:          220,
-          flexShrink:     0,
-          borderRadius:   "var(--radius-xl)",
-          display:        "flex",
-          flexDirection:  "column",
-          gap:            2,
-          overflowY:      "auto",
-          background:     "var(--gradient-card)",
-          border:         "1px solid var(--border-primary)",
-          boxShadow:      "var(--shadow-card)",
-          backdropFilter: "blur(16px)",
-          padding:        10,
-        }}
-      >
-        {/* New Chat button */}
-        <button
-          id="btn-new-chat"
-          onClick={newChat}
+  style={{
+    width: 220,
+    flexShrink: 0,
+    borderRadius: "var(--radius-xl)",
+
+    display: "flex",
+    flexDirection: "column",
+
+    overflowY: "auto",
+    overflowX: "hidden",
+
+    background: "var(--gradient-card)",
+    border: "1px solid var(--border-primary)",
+    boxShadow: "var(--shadow-card)",
+    backdropFilter: "blur(16px)",
+
+    padding: 10,
+    gap: 6,
+
+    position: "relative",
+  }}
+>
+  {/* New Chat button */}
+  <button
+    id="btn-new-chat"
+    onClick={newChat}
+    style={{
+      width: "100%",
+      padding: "10px 0",
+
+      position: "sticky",
+      top: 0,
+      zIndex: 20,
+
+      borderRadius: "var(--radius-md)",
+
+      fontSize: "var(--text-sm)",
+      fontWeight: "var(--font-semibold)",
+
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+
+      marginBottom: 6,
+
+      cursor: "pointer",
+
+      background: "rgba(20,20,20,0.95)",
+      backdropFilter: "blur(12px)",
+
+      color: "var(--text-primary)",
+
+      border: "1px solid var(--border-secondary)",
+
+      transition:
+        "background var(--transition-fast), border-color var(--transition-fast)",
+
+      flexShrink: 0,
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.background = "rgba(255,255,255,0.10)";
+      e.currentTarget.style.borderColor = "var(--border-hover)";
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.background = "rgba(20,20,20,0.95)";
+      e.currentTarget.style.borderColor = "var(--border-secondary)";
+    }}
+  >
+    <Plus size={13} />
+    New Chat
+  </button>
+
+  {/* Conversation list */}
+  {loadingConvs ? (
+    <>
+      {[1, 2, 3, 4].map((i) => (
+        <div
+          key={i}
+          className="skeleton-line"
           style={{
-            width:          "100%",
-            padding:        "9px 0",
-            position:       "sticky",
-            top:            0,
-            zIndex:         10,
-            borderRadius:   "var(--radius-md)",
-            fontSize:       "var(--text-sm)",
-            fontWeight:     "var(--font-semibold)",
-            display:        "flex",
-            alignItems:     "center",
-            justifyContent: "center",
-            gap:            6,
-            marginBottom:   6,
-            cursor:         "pointer",
-            background:     "rgba(255,255,255,0.07)",
-            color:          "var(--text-primary)",
-            border:         "1px solid var(--border-secondary)",
-            transition:     "background var(--transition-fast), border-color var(--transition-fast)",
+            height: 42,
+            borderRadius: "var(--radius-md)",
+            flexShrink: 0,
+          }}
+        />
+      ))}
+    </>
+  ) : (
+    conversations.map((c) => {
+      const isActive = activeId === c.id;
+
+      return (
+        <button
+          key={c.id}
+          onClick={() => void loadConversation(c.id)}
+          style={{
+            width: "100%",
+
+            textAlign: "left",
+
+            padding: "10px 12px",
+
+            minHeight: 42,
+
+            borderRadius: "var(--radius-md)",
+
+            fontSize: "var(--text-sm)",
+
+            cursor: "pointer",
+
+            background: isActive
+              ? "rgba(255,255,255,0.05)"
+              : "transparent",
+
+            color: isActive
+              ? "var(--text-primary)"
+              : "var(--text-subtle)",
+
+            border: isActive
+              ? "1px solid var(--border-secondary)"
+              : "1px solid transparent",
+
+            transition:
+              "background var(--transition-fast), color var(--transition-fast)",
+
+            overflow: "hidden",
+
+            flexShrink: 0,
+
+            display: "flex",
+            alignItems: "center",
           }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.10)";
-            (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-hover)";
+            if (!isActive) {
+              e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+            }
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.07)";
-            (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-secondary)";
+            if (!isActive) {
+              e.currentTarget.style.background = "transparent";
+            }
           }}
         >
-          <Plus size={13} />
-          New Chat
-        </button>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              width: "100%",
+              overflow: "hidden",
+            }}
+          >
+            <MessageSquare
+              size={11}
+              style={{
+                opacity: 0.4,
+                flexShrink: 0,
+              }}
+            />
 
-        {/* Conversation list */}
-        {loadingConvs ? (
-          <>
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="skeleton-line" style={{ height: 32, borderRadius: "var(--radius-md)", marginBottom: 2 }} />
-            ))}
-          </>
-        ) : (
-          conversations.map((c) => {
-            const isActive = activeId === c.id;
-            return (
-              <button
-                key={c.id}
-                onClick={() => void loadConversation(c.id)}
-                style={{
-                  textAlign:    "left",
-                  padding:      "8px 12px",
-                  borderRadius: "var(--radius-md)",
-                  fontSize:     "var(--text-sm)",
-                  cursor:       "pointer",
-                  background:   isActive ? "rgba(255,255,255,0.05)" : "transparent",
-                  color:        isActive ? "var(--text-primary)"    : "var(--text-subtle)",
-                  border:       isActive ? "1px solid var(--border-secondary)" : "1px solid transparent",
-                  transition:   "background var(--transition-fast), color var(--transition-fast)",
-                  overflow:     "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace:   "nowrap",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <MessageSquare size={11} style={{ opacity: 0.4, flexShrink: 0 }} />
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</span>
-                </div>
-              </button>
-            );
-          })
-        )}
-      </div>
+            <span
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                width: "100%",
+              }}
+            >
+              {c.title}
+            </span>
+          </div>
+        </button>
+      );
+    })
+  )}
+</div>
 
       {/* ── Chat Main ── */}
       <div

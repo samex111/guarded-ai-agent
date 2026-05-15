@@ -1,49 +1,102 @@
 "use client";
 
 import type { ExecutionRecord } from "@/components/execution/execution-types";
-import { kindIcon } from "@/lib/execution-humanize";
 
-function Chip({ toolName, serverLabel }: { toolName: string; serverLabel?: string }) {
+import {
+  Brain,
+  CheckCircle2,
+  XCircle,
+  Shield,
+  Wrench,
+  LoaderCircle,
+} from "lucide-react";
+
+function Chip({
+  toolName,
+  serverLabel,
+}: {
+  toolName: string;
+  serverLabel?: string;
+}) {
   return (
     <div
       className="animate-execution-in"
       style={{
-        display:        "inline-flex",
-        maxWidth:       "100%",
-        flexDirection:  "column",
-        gap:            2,
-        borderRadius:   "var(--radius-sm)",
-        padding:        "5px 10px",
-        textAlign:      "left",
-        background:     "var(--accent-soft)",
-        border:         "1px solid rgba(214,235,253,0.08)",
+        display: "inline-flex",
+        maxWidth: "100%",
+        flexDirection: "column",
+        gap: 4,
+
+        borderRadius: 12,
+
+        padding: "8px 12px",
+
+        textAlign: "left",
+
+        background: "rgba(255,255,255,0.04)",
+
+        border: "1px solid rgba(255,255,255,0.06)",
+
+        backdropFilter: "blur(12px)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-        <span style={{ flexShrink: 0, fontSize: 11 }} aria-hidden>⚡</span>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          minWidth: 0,
+        }}
+      >
+        <div
+          style={{
+            width: 24,
+            height: 24,
+
+            borderRadius: 8,
+
+            background: "rgba(59,130,246,0.12)",
+
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+
+            flexShrink: 0,
+          }}
+        >
+          <Wrench size={13} color="#60a5fa" />
+        </div>
+
         <span
           style={{
-            fontSize:     "var(--text-xs)",
-            fontWeight:   "var(--font-medium)",
-            overflow:     "hidden",
+            fontSize: 13,
+            fontWeight: 500,
+
+            overflow: "hidden",
             textOverflow: "ellipsis",
-            whiteSpace:   "nowrap",
-            color:        "var(--text-secondary)",
-            fontFamily:   "var(--font-mono)",
+            whiteSpace: "nowrap",
+
+            color: "var(--text-primary)",
+
+            fontFamily: "var(--font-mono)",
           }}
         >
           {toolName}
         </span>
       </div>
+
       {serverLabel ? (
         <span
           style={{
-            fontSize:     "10px",
-            overflow:     "hidden",
+            fontSize: 11,
+
+            overflow: "hidden",
             textOverflow: "ellipsis",
-            whiteSpace:   "nowrap",
-            paddingLeft:  18,
-            color:        "var(--text-disabled)",
+            whiteSpace: "nowrap",
+
+            paddingLeft: 32,
+
+            color: "#71717a",
           }}
         >
           {serverLabel}
@@ -53,56 +106,159 @@ function Chip({ toolName, serverLabel }: { toolName: string; serverLabel?: strin
   );
 }
 
-export function ExecutionItemRow({ item }: { item: ExecutionRecord }) {
-  const icon =
-    item.kind === "tool" && item.toolName && item.serverLabel
-      ? null
-      : (
-          <span
-            style={{ flexShrink: 0, width: 18, textAlign: "center", fontSize: 12 }}
-            aria-hidden
-          >
-            {item.kind === "approval" && item.status === "done"
-              ? "✅"
-              : item.kind === "approval" && item.status === "error"
-                ? "❌"
-                : kindIcon(item.kind)}
-          </span>
+export function ExecutionItemRow({
+  item,
+}: {
+  item: ExecutionRecord;
+}) {
+  const renderIcon = () => {
+    if (item.status === "running") {
+      return (
+        <LoaderCircle
+          size={15}
+          className="animate-spin"
+          color="#8b5cf6"
+        />
+      );
+    }
+
+    if (item.status === "done") {
+      return (
+        <CheckCircle2
+          size={15}
+          color="#22c55e"
+        />
+      );
+    }
+
+    if (item.status === "error") {
+      return (
+        <XCircle
+          size={15}
+          color="#ef4444"
+        />
+      );
+    }
+
+    switch (item.kind) {
+      case "approval":
+        return (
+          <Shield
+            size={15}
+            color="#f59e0b"
+          />
         );
+
+      case "tool":
+        return (
+          <Wrench
+            size={15}
+            color="#60a5fa"
+          />
+        );
+
+      default:
+        return (
+          <Brain
+            size={15}
+            color="#94a3b8"
+          />
+        );
+    }
+  };
 
   return (
     <div
       className="animate-execution-in"
       style={{
-        display:     "flex",
-        gap:         8,
-        padding:     "5px 0",
-        borderBottom: "1px solid var(--border-primary)",
-        alignItems:  "flex-start",
+        display: "flex",
+
+        gap: 12,
+
+        padding: "12px 0",
+
+        borderBottom:
+          "1px solid rgba(255,255,255,0.05)",
+
+        alignItems: "flex-start",
       }}
       data-status={item.status}
     >
-      {item.kind === "tool" && item.toolName && item.serverLabel ? (
-        <div style={{ display: "flex", gap: 8, minWidth: 0, flex: 1, alignItems: "flex-start" }}>
-          <Chip toolName={item.toolName} serverLabel={item.serverLabel} />
+      {item.kind === "tool" &&
+      item.toolName &&
+      item.serverLabel ? (
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            minWidth: 0,
+            flex: 1,
+            alignItems: "flex-start",
+          }}
+        >
+          <Chip
+            toolName={item.toolName}
+            serverLabel={item.serverLabel}
+          />
         </div>
       ) : (
         <>
-          {icon}
-          <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
-            <p style={{ fontSize: "var(--text-xs)", lineHeight: 1.5, color: "var(--text-muted)" }}>
+          <div
+            style={{
+              width: 18,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+
+              flexShrink: 0,
+
+              marginTop: 2,
+            }}
+          >
+            {renderIcon()}
+          </div>
+
+          <div
+            style={{
+              minWidth: 0,
+              flex: 1,
+
+              display: "flex",
+              flexDirection: "column",
+
+              gap: 4,
+            }}
+          >
+            <p
+              style={{
+                fontSize: 13,
+
+                lineHeight: 1.5,
+
+                color: "var(--text-primary)",
+
+                fontWeight: 500,
+              }}
+            >
               {item.title}
             </p>
+
             {item.subtitle ? (
               <p
                 style={{
-                  fontSize:   "11px",
-                  lineHeight: 1.4,
-                  overflow:   "hidden",
-                  display:    "-webkit-box",
+                  fontSize: 12,
+
+                  lineHeight: 1.5,
+
+                  overflow: "hidden",
+
+                  display: "-webkit-box",
+
                   WebkitLineClamp: 2,
+
                   WebkitBoxOrient: "vertical",
-                  color:      "var(--text-subtle)",
+
+                  color: "#71717a",
                 }}
               >
                 {item.subtitle}
