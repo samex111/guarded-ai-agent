@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: guarded-postgres
+    restart: always
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: guarded_ai
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: guarded-redis
+    restart: always
+
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+
+    container_name: guarded-backend
+
+    restart: always
+
+    ports:
+      - "8080:8080"
+
+    env_file:
+      - ./apps/backend/.env
+
+    depends_on:
+      - postgres
+      - redis
+
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/guarded_ai
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+
+    volumes:
+      - ./apps/filesystem-mcp:/app/filesystem-mcp
+      - ./apps/lead-mcp:/app/lead-mcp
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+
+    container_name: guarded-frontend
+
+    restart: always
+
+    depends_on:
+      - backend
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+
+volumes:
+  postgres_data:

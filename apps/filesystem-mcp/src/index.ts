@@ -28,8 +28,9 @@ import { register as registerDeleteFile } from "./tools/delete-file.js";
 import { register as registerListFiles } from "./tools/list-files.js";
 
 // ─── Configuration ───────────────────────────────────────
-
-const WORKSPACE_ROOT = process.env["WORKSPACE_ROOT"] || process.argv[2] || "./workspace";
+const WORKSPACE_ROOT =
+  process.argv[2] ||
+  "/app/filesystem-mcp/workspace";
 const resolvedRoot = path.resolve(WORKSPACE_ROOT);
 
 // ─── Bootstrap ───────────────────────────────────────────
