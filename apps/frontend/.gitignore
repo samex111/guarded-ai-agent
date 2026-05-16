@@ -12,7 +12,9 @@
 
 # testing
 /coverage
-
+/apps/backend/dist
+apps/backend/dist
+dis
 # next.js
 /.next/
 /out/
