@@ -10,7 +10,9 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { runAgentLoop } from "../../agents/agent-loop.js";
+import { DEFAULT_AGENT_CONFIG } from "../../agents/types.js";
 import { getPrismaClient } from "../../db/client.js";
+import { recordUsage, getUsageSummary } from "../../leads/services/token-tracking.service.js";
 
 export const conversationRouter = Router();
 
@@ -78,6 +80,21 @@ conversationRouter.post(
       console.log(`💬 Chat [${id}]: "${body.message.slice(0, 80)}"`);
 
       const response = await runAgentLoop(body.message, id);
+
+      // Record token usage + cost
+      try {
+        if (response.tokenUsage) {
+          await recordUsage({
+            conversationId: response.conversationId,
+            provider: "groq",
+            model: DEFAULT_AGENT_CONFIG.model,
+            inputTokens: response.tokenUsage.promptTokens ?? 0,
+            outputTokens: response.tokenUsage.completionTokens ?? 0,
+          });
+        }
+      } catch (usageErr) {
+        console.warn("Failed to record token usage:", usageErr);
+      }
 
       return res.json({
         success: true,
@@ -165,6 +182,30 @@ conversationRouter.get(
       });
 
       return res.json({ success: true, data: conversations });
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        message: err instanceof Error ? err.message : "Server error",
+      });
+    }
+  },
+);
+
+// ─── GET /api/conversations/:id/usage — Token analytics ──
+
+conversationRouter.get(
+  "/:id/usage",
+  async (req: Request, res: Response) => {
+    try {
+      const id = routeParamId(req.params["id"]);
+      if (id === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing conversation id",
+        });
+      }
+      const summary = await getUsageSummary(id);
+      return res.json({ success: true, data: summary });
     } catch (err) {
       return res.status(500).json({
         success: false,

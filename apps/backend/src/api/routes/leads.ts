@@ -113,6 +113,7 @@ const updateBodySchema = z.object({
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
   pinned: z.boolean().optional(),
+  isFavorite: z.boolean().optional(),
 });
 
 leadRouter.patch("/leads/:id", async (req: Request, res: Response) => {
@@ -131,6 +132,7 @@ leadRouter.patch("/leads/:id", async (req: Request, res: Response) => {
       ...(d.notes !== undefined ? { notes: d.notes } : {}),
       ...(d.tags !== undefined ? { tags: d.tags } : {}),
       ...(d.pinned !== undefined ? { pinned: d.pinned } : {}),
+      ...(d.isFavorite !== undefined ? { isFavorite: d.isFavorite } : {}),
     };
     const lead = await updateLead(id, patch);
     return res.json({ success: true, data: lead });
@@ -163,7 +165,7 @@ leadRouter.post("/leads/:id/export", async (req: Request, res: Response) => {
         status: lead.status,
         notes: lead.notes,
         tags: lead.tags,
-        data: lead.data,
+        rawData: lead.rawData,
       },
     };
     return res.json({

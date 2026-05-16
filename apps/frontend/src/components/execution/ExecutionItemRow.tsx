@@ -112,7 +112,7 @@ export function ExecutionItemRow({
   item: ExecutionRecord;
 }) {
   const renderIcon = () => {
-    if (item.status === "running") {
+    if (item.status === "active") {
       return (
         <LoaderCircle
           size={15}

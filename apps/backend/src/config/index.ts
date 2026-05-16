@@ -32,6 +32,9 @@ const envSchema = z.object({
 
   /** Optional — enables Context7 MCP row in DB when set (see seed). */
   CONTEXT7_API_KEY: z.string().optional(),
+
+  /** External scraper microservice URL (default http://localhost:4001). */
+  SCRAPER_SERVICE_URL: z.string().url().default("http://localhost:4001"),
 });
 
 // ─── Types ───────────────────────────────────────────────

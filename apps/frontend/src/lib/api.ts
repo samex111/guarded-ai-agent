@@ -97,14 +97,58 @@ export interface AuditLog {
 export interface LeadSummary {
   id: string;
   website: string;
-  name: string;
+  name: string | null;
+  description: string | null;
+  email: string | null;
+  logo: string | null;
+  industry: string | null;
+  businessType: string | null;
   leadScore: number;
   confidence: number;
   priority: string;
   status: string;
+  isEnriched: boolean;
+  isFavorite: boolean;
   expiresAt: string | null;
   pinned: boolean;
   tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeadFull {
+  id: string;
+  website: string;
+  name: string | null;
+  description: string | null;
+  email: string | null;
+  emailQuality: string | null;
+  phone: string | null;
+  businessType: string | null;
+  industry: string | null;
+  leadScore: number;
+  confidence: number;
+  priority: string | null;
+  logo: string | null;
+  screenshot: string | null;
+  keywords: string | null;
+  pages: Record<string, unknown> | null;
+  socials: Record<string, unknown> | null;
+  technologies: unknown[] | null;
+  seo: Record<string, unknown> | null;
+  performance: Record<string, unknown> | null;
+  rawData: Record<string, unknown> | null;
+  isEnriched: boolean;
+  enrichedAt: string | null;
+  isFavorite: boolean;
+  notes: string | null;
+  tags: string[];
+  exportedAt: string | null;
+  exportCount: number;
+  status: string;
+  pinned: boolean;
+  expiresAt: string | null;
+  deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -114,6 +158,26 @@ export interface LeadListResponse {
   total: number;
   page: number;
   pageSize: number;
+}
+
+export interface ConversationUsageSummary {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  totalCost: number;
+  requestCount: number;
+  lastModel: string | null;
+  lastProvider: string | null;
+  history: Array<{
+    id: string;
+    model: string;
+    provider: string;
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    totalCost: number;
+    createdAt: string;
+  }>;
 }
 
 // ─── API Functions ───────────────────────────────────────
@@ -147,6 +211,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ message }),
     }),
+  getConversationUsage: (id: string) =>
+    request<{ success: boolean; data: ConversationUsageSummary }>(
+      `/api/conversations/${id}/usage`,
+    ),
 
   // Policies
   listPolicies: () =>
@@ -210,4 +278,16 @@ export const api = {
       `/api/leads${s ? `?${s}` : ""}`,
     );
   },
+  getLeadById: (id: string) =>
+    request<{ success: boolean; data: LeadFull }>(`/api/leads/${id}`),
+  toggleFavorite: (id: string, isFavorite: boolean) =>
+    request<{ success: boolean; data: LeadFull }>(`/api/leads/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ isFavorite }),
+    }),
+  updateLead: (id: string, data: { notes?: string; tags?: string[]; pinned?: boolean; isFavorite?: boolean }) =>
+    request<{ success: boolean; data: LeadFull }>(`/api/leads/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
 };

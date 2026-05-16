@@ -7,6 +7,7 @@ import { useChatExecutionSocket } from "@/hooks/useChatExecutionSocket";
 import { ExecutionTimeline } from "@/components/execution/ExecutionTimeline";
 import type { ExecutionRecord } from "@/components/execution/execution-types";
 import { Send, Plus, MessageSquare, Sparkles } from "lucide-react";
+import { TokenUsageBadge } from "@/components/chat/TokenUsageBadge";
 
 interface ChatMessage {
   id: string;
@@ -59,6 +60,7 @@ export default function ChatPage() {
   const [loading, setLoading]             = useState(false);
   const [loadingConvs, setLoadingConvs]   = useState(true);
   const [socketConvId, setSocketConvId]   = useState<string | null>(null);
+  const [msgCount, setMsgCount]           = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const streamingAssistantIdRef = useRef<string | null>(null);
 
@@ -192,6 +194,7 @@ export default function ChatPage() {
       setLoading(false);
       setSocketConvId(null);
       streamingAssistantIdRef.current = null;
+      setMsgCount((c) => c + 1);
     }
   };
 
@@ -668,6 +671,13 @@ export default function ChatPage() {
             ))}
 
             <div ref={bottomRef} />
+
+            {/* Token usage */}
+            {activeId && !loading && messages.length > 0 && (
+              <div style={{ padding: "4px 0" }}>
+                <TokenUsageBadge conversationId={activeId} refreshKey={msgCount} />
+              </div>
+            )}
           </div>
 
           {/* Input area */}

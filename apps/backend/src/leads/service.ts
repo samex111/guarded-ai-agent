@@ -12,9 +12,8 @@ import {
   emitLeadUpdated,
   emitScrapePhase,
 } from "../websocket/events.js";
-import { deriveScores, extractTitle } from "./scrape-helpers.js";
+import { scrapeWebsite } from "./services/scraper.service.js";
 
-const SCRAPE_BODY_MAX = 512_000;
 const TEMP_TTL_MS = 24 * 60 * 60 * 1000;
 
 export async function scrapeAndCreateLead(url: string): Promise<{
@@ -31,54 +30,31 @@ export async function scrapeAndCreateLead(url: string): Promise<{
     website = `https://${website}`;
   }
 
+  // ── Phase 1: Fetching ──
   emitScrapePhase({
     phase: "fetch",
     message: "Fetching website…",
     website,
   });
+ 
+  // ── Phase 2: Call scraper microservice ──
+  const scraped = await scrapeWebsite(website);
 
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), 20_000);
-
-  let html = "";
-  let statusCode = 0;
-  try {
-    const res = await fetch(website, {
-      signal: controller.signal,
-      redirect: "follow",
-      headers: {
-        "User-Agent": "GuardedLeadBot/1.0 (+https://localhost)",
-        Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
-      },
-    });
-    statusCode = res.status;
-    const buf = await res.arrayBuffer();
-    const slice = buf.byteLength > SCRAPE_BODY_MAX ? buf.slice(0, SCRAPE_BODY_MAX) : buf;
-    html = new TextDecoder("utf-8", { fatal: false }).decode(slice);
-  } finally {
-    clearTimeout(t);
-  }
-
+  // ── Phase 3: Extracting metadata ──
   emitScrapePhase({
     phase: "metadata",
     message: "Extracting metadata…",
     website,
   });
 
-  const name = extractTitle(html) || new URL(website).hostname;
-
+  // ── Phase 4: Detecting technologies ──
   emitScrapePhase({
     phase: "technologies",
     message: "Detecting technologies…",
     website,
   });
 
-  const { leadScore, confidence, priority } = deriveScores(
-    website,
-    name.length,
-    html.length,
-  );
-
+  // ── Phase 5: Scoring ──
   emitScrapePhase({
     phase: "score",
     message: "Calculating lead score…",
@@ -88,15 +64,7 @@ export async function scrapeAndCreateLead(url: string): Promise<{
   const now = new Date();
   const expiresAt = new Date(now.getTime() + TEMP_TTL_MS);
 
-  const data = {
-    scrape: {
-      fetchedAt: now.toISOString(),
-      statusCode,
-      contentLength: html.length,
-      snippet: html.slice(0, 2000),
-    },
-  };
-
+  // ── Phase 6: Saving ──
   emitScrapePhase({
     phase: "save",
     message: "Saving lead…",
@@ -105,13 +73,27 @@ export async function scrapeAndCreateLead(url: string): Promise<{
 
   const lead = await prisma.lead.create({
     data: {
-      website,
-      name,
-      leadScore,
-      confidence,
-      priority,
+      website: scraped.website,
+      name: scraped.name ?? new URL(website).hostname,
+      description: scraped.description,
+      email: scraped.email,
+      phone: scraped.phone,
+      businessType: scraped.businessType,
+      industry: scraped.industry,
+      leadScore: scraped.leadScore,
+      confidence: scraped.confidence,
+      priority: scraped.priority,
+      logo: scraped.logo,
+      keywords: scraped.keywords,
+      pages: (scraped.pages as object) ?? undefined,
+      socials: (scraped.socials as object) ?? undefined,
+      technologies: (scraped.technologies as object) ?? undefined,
+      seo: (scraped.seo as object) ?? undefined,
+      performance: (scraped.performance as object) ?? undefined,
+      rawData: (scraped.rawData as object) ?? undefined,
+      isEnriched: true,
+      enrichedAt: now,
       status: "TEMPORARY",
-      data: data as object,
       expiresAt,
     },
   });
@@ -122,8 +104,8 @@ export async function scrapeAndCreateLead(url: string): Promise<{
     status: lead.status,
     expiresAt: lead.expiresAt?.toISOString() ?? null,
     leadScore: lead.leadScore,
-    priority: lead.priority,
-    name: lead.name,
+    priority: lead.priority ?? "MEDIUM",
+    name: lead.name ?? "",
   });
 
   emitScrapePhase({
@@ -134,9 +116,9 @@ export async function scrapeAndCreateLead(url: string): Promise<{
 
   return {
     leadId: lead.id,
-    name: lead.name,
+    name: lead.name ?? website,
     leadScore: lead.leadScore,
-    priority: lead.priority,
+    priority: lead.priority ?? "MEDIUM",
     confidence: lead.confidence,
     expiresIn: "24h",
   };
@@ -173,10 +155,17 @@ export async function listLeads(params: ListLeadsParams) {
         id: true,
         website: true,
         name: true,
+        description: true,
+        email: true,
+        logo: true,
+        industry: true,
+        businessType: true,
         leadScore: true,
         confidence: true,
         priority: true,
         status: true,
+        isEnriched: true,
+        isFavorite: true,
         expiresAt: true,
         pinned: true,
         tags: true,
@@ -222,7 +211,7 @@ export async function saveLead(id: string) {
 
 export async function updateLead(
   id: string,
-  patch: { notes?: string; tags?: string[]; pinned?: boolean },
+  patch: { notes?: string; tags?: string[]; pinned?: boolean; isFavorite?: boolean },
 ) {
   const prisma = getPrismaClient();
   const existing = await prisma.lead.findFirst({
@@ -236,6 +225,7 @@ export async function updateLead(
   if (patch.notes !== undefined) data.notes = patch.notes;
   if (patch.tags !== undefined) data.tags = patch.tags;
   if (patch.pinned !== undefined) data.pinned = patch.pinned;
+  if (patch.isFavorite !== undefined) data.isFavorite = patch.isFavorite;
 
   if (Object.keys(data).length === 0) {
     emitLeadUpdated({ leadId: existing.id });
@@ -254,7 +244,10 @@ export async function recordExport(id: string) {
   const prisma = getPrismaClient();
   return prisma.lead.update({
     where: { id },
-    data: { exportCount: { increment: 1 } },
+    data: {
+      exportCount: { increment: 1 },
+      exportedAt: new Date(),
+    },
   });
 }
 
