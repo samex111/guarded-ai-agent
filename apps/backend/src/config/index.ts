@@ -34,7 +34,7 @@ const envSchema = z.object({
   CONTEXT7_API_KEY: z.string().optional(),
 
   /** External scraper microservice URL (default http://localhost:4001). */
-  SCRAPER_SERVICE_URL: z.string().url().default("http://localhost:4001"),
+  SCRAPER_SERVICE_URL: z.string().url().default("http://host.docker.internal:4001"),
 });
 
 // ─── Types ───────────────────────────────────────────────

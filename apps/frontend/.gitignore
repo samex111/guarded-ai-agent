@@ -14,7 +14,7 @@
 /coverage
 /apps/backend/dist
 apps/backend/dist
-dis
+dist
 # next.js
 /.next/
 /out/
