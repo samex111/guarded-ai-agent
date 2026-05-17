@@ -8,6 +8,15 @@ import {
   FileText, BarChart3, ChevronDown, ChevronRight, Loader2,
   BookOpen, Link2,
 } from "lucide-react";
+import {
+  DollarSign,
+  FileText,
+  Briefcase,
+  Mail,
+  PenSquare,
+  Info,
+  Link,
+} from "lucide-react";
 
 export default function LeadDetailPage() {
   const params = useParams();
@@ -427,15 +436,34 @@ function MetricCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function pageIcon(key: string): string {
+function pageIcon(key: string) {
   const k = key.toLowerCase();
-  if (k.includes("pricing") || k.includes("price")) return "💰";
-  if (k.includes("doc")) return "📄";
-  if (k.includes("career") || k.includes("job")) return "💼";
-  if (k.includes("contact")) return "📧";
-  if (k.includes("blog")) return "📝";
-  if (k.includes("about")) return "ℹ️";
-  return "🔗";
+
+  if (k.includes("pricing") || k.includes("price")) {
+    return DollarSign;
+  }
+
+  if (k.includes("doc")) {
+    return FileText;
+  }
+
+  if (k.includes("career") || k.includes("job")) {
+    return Briefcase;
+  }
+
+  if (k.includes("contact")) {
+    return Mail;
+  }
+
+  if (k.includes("blog")) {
+    return PenSquare;
+  }
+
+  if (k.includes("about")) {
+    return Info;
+  }
+
+  return Link;
 }
 
 function formatBytes(bytes: number): string {
